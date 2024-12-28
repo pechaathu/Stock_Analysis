@@ -1,26 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Importing Libraries
+# # Importing Libraries
 
-# In[1]:
+# In[153]:
 
 
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
-from datetime import datetime, timedelta
-from contextlib import redirect_stderr
 import io
 import sys
-import warnings
-warnings.filterwarnings('ignore')
+import requests
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import streamlit as st
+from bs4 import BeautifulSoup as bs
+from contextlib import redirect_stderr
+from datetime import datetime, timedelta
+import plotly.graph_objects as go
+import plotly.express as px
+import plotly.io as pio
+pio.templates["custom_template"] = pio.templates["plotly"]
+pio.templates["custom_template"]["layout"]["colorway"] = px.colors.qualitative.Plotly
+pio.templates.default = "custom_template"
+color_palette = px.colors.qualitative.Plotly
 
 
-# ## Page Settings
+# # Page Settings
 
 # In[ ]:
 
@@ -32,7 +37,7 @@ st.set_page_config(layout='wide')
 
 
 if "page" not in st.session_state:
-    st.session_state.page = "Stock Portfolio"
+    st.session_state.page = "Stock Watchlist"
 
 st.markdown("""<style>.menu-container {display: flex; justify-content: center; align-items: center; margin-top: 1px;
             }.menu-button {padding: 0.2px 0.60x; font-size: 24px; font-weight: bold; background-color: #007BFF; color: white; border: none; 
@@ -57,7 +62,7 @@ with colmenu4:
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ## Functions
+# # Functions
 
 # In[26]:
 
@@ -109,6 +114,21 @@ def fetch_historical_prices_batch(symbol, dates):
         return {}
 
 
+# In[9]:
+
+
+def webscrap(webcontent, label):
+    label_tag = webcontent.find(string=lambda text: text and label in text)
+    if label_tag:
+        parent = label_tag.parent
+        value_tag = parent.find_next(class_='number')
+        if value_tag:
+            value_string = value_tag.text.strip()
+            return value_string
+
+
+# # Dashboard Pages
+
 # ## Stock Portfolio Page
 
 # In[ ]:
@@ -159,7 +179,8 @@ if st.session_state.page == "Stock Portfolio":
         st.metric(label="Total Investment", value="₹"+str(holdings['Total Investment'].sum().round(2)))
     with metriccol3:
         st.metric(label="Current Value", value="₹"+str(holdings['Current Value'].sum().round(2)),
-                  delta="₹"+str((holdings['Current Value'].sum()-holdings['Total Investment'].sum()).round(2)))
+                  delta=f"₹{abs((holdings['Current Value'].sum()-holdings['Total Investment'].sum())):.2f}" if (holdings['Current Value'].sum()-
+                        holdings['Total Investment'].sum())>0 else f"-₹{abs((holdings['Current Value'].sum()-holdings['Total Investment'].sum())):.2f}")
     with metriccol4:
         st.metric("Total Stocks", len(holdings['Stock Name'].unique().tolist()))
     with metriccol5:
@@ -233,7 +254,6 @@ if st.session_state.page == "Mutual Fund Portfolio":
         fundhousedf['Cumulative Units'] = fundhousedf['Units'].cumsum()
         fundhousedf[['Total Investment','Cumulative Units']] = fundhousedf[['Total Investment','Cumulative Units']].fillna(method='ffill')
         fundhousedf['Current Value'] = fundhousedf['NAV']*fundhousedf['Cumulative Units']
-        # current_value += fundhousedf[fundhousedf['Date']==fundhousedf['Date'].max()]['Current Value'].max()
         current_value += fundhousedf['Current Value'][len(fundhousedf)-1]
         returns_list.append(np.round(100*(fundhousedf[fundhousedf['Date']==fundhousedf['Date'].max()
                                 ]['Current Value'].max()-fundhousedf[fundhousedf['Date']==fundhousedf['Date'].max()
@@ -244,7 +264,9 @@ if st.session_state.page == "Mutual Fund Portfolio":
     with metriccol2:
         st.metric(label="Total Investment", value="₹"+str(df['Amount'].sum().round(2)))
     with metriccol3:
-        st.metric(label="Current Value", value="₹"+str(np.round(current_value,2)),delta="₹"+str((current_value-df['Amount'].sum()).round(2)))
+        st.metric(label="Current Value", value="₹"+str(np.round(current_value,2)),
+                  delta=f"₹{abs((current_value-df['Amount'].sum())):.2f}" if (current_value-
+                        df['Amount'].sum())>0 else f"-₹{abs(current_value-df['Amount'].sum()):.2f}")
     with metriccol4:
         st.metric("Total Funds", len(fundhouses))
     with metriccol5:
@@ -279,6 +301,8 @@ if st.session_state.page == "Mutual Fund Portfolio":
 
 # ## Stock Watchlist Page
 
+# ### Stock Filters & Price Chart
+
 # In[ ]:
 
 
@@ -292,8 +316,18 @@ if st.session_state.page == "Stock Watchlist":
                  'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS", "Varun Beverages":"VBL.NS", "Bikaji Foods":"BIKAJI.NS"},
                  'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS", "Sonata Softwares":"SONATASOFTW.NS"},
                  'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS"}}
-    if comparison==True:
-        companies.pop('Index')
+    web = 'https://www.screener.in/company/'
+    con = 'consolidated/'
+    stockurls = {'Nifty50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'NiftyAuto':f'{web}CNXAUTO/', 'Tata Motors':f'{web}TATAMOTORS/{con}',
+                 'Mahindra & Mahindra':f'{web}M&M/{con}', 'Hero Motocorp':f'{web}HEROMOTOCO/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
+                 'ICICI':f'{web}ICICIBANK/{con}', 'IOB':f'{web}IOB/', 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}',
+                 'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}', 'Exicom Tele-Systems':f'{web}EXICOM/{con}',
+                 'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}/NESTLEIND/', 'Varun Beverages':f'{web}/VBL/{con}',
+                 'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
+                 'Sonata Softwares':f'{web}/SONATASOFTW/{con}', 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}',
+                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}'
+                }
+                 
     st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Watchlist</div>""",
             unsafe_allow_html=True)
     headcol1, headcol2 = st.columns([8.5,1.5])
@@ -365,15 +399,16 @@ if st.session_state.page == "Stock Watchlist":
     stock_data = stock_data[stock_data['Date']>=start_date].reset_index(drop=True)
 
     if comparison==True:
-        bm_data = yf.download("^NSEI",start=start_date,end=datetime.today())
+        bm_data = yf.download("^NSEI")
         bm_data.columns = ['_'.join(col).strip() for col in bm_data.columns.values]
         bm_data['Date'] = bm_data.index
+        bm_data = bm_data[bm_data['Date']>=start_date].reset_index(drop=True)
         bm_data = bm_data.reset_index(drop=True)
-        bm_data['Variation_^NSEI'] = np.round(100*(bm_data['Close_^NSEI']-bm_data['Close_^NSEI'][0])/bm_data['Close_^NSEI'],2)
+        stock_data = pd.merge(stock_data, bm_data, how="left", on='Date')
+        stock_data['Variation_^NSEI'] = np.round(100*(stock_data['Close_^NSEI']-stock_data['Close_^NSEI'][0])/stock_data['Close_^NSEI'][0],2)
         if stock_symbol!="^NSEI":
             stock_data['Variation_'+stock_symbol] = np.round(100*(
-                                            stock_data['Close_'+stock_symbol]-stock_data['Close_'+stock_symbol][0])/stock_data['Close_'+stock_symbol],2)
-        stock_data = pd.merge(stock_data, bm_data, how="left", on='Date')
+                                        stock_data['Close_'+stock_symbol]-stock_data['Close_'+stock_symbol][0])/stock_data['Close_'+stock_symbol][0],2)
         
         fig_compline = go.Figure()
         fig_compline.add_trace(go.Scatter(x=stock_data['Date'],y=stock_data['Variation_'+stock_symbol],mode='lines',name=stock_name,
@@ -381,7 +416,7 @@ if st.session_state.page == "Stock Watchlist":
         if stock_symbol!="^NSEI":
             fig_compline.add_trace(go.Scatter(x=stock_data['Date'],y=stock_data['Variation_^NSEI'],mode='lines',name='Nifty 50',
                                               line=dict(color='yellow')))
-        fig_compline.update_layout(title=dict(text="Nifty 50 v/s "+stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="% variation",
+        fig_compline.update_layout(title=dict(text="Nifty-50  v/s  "+stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="% variation",
                                template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True), width=1350, height=500)
         st.plotly_chart(fig_compline)
 
@@ -411,6 +446,18 @@ if st.session_state.page == "Stock Watchlist":
                 fig_line.add_trace(go.Scatter(x=stock_data['Date'], y=stock_data['50_DMA'], mode='lines', name='50 DMA', line=dict(color='yellow')))
             if dma200==True:
                 fig_line.add_trace(go.Scatter(x=stock_data['Date'], y=stock_data['200_DMA'], mode='lines', name='200 DMA', line=dict(color='blue')))
+            max_value = stock_data['Close_'+stock_symbol].max().round(2)
+            min_value = stock_data['Close_'+stock_symbol].min().round(2)
+            cur_value = stock_data['Close_'+stock_symbol][len(stock_data)-1].round(2)
+            max_date = stock_data.loc[stock_data['Close_'+stock_symbol].idxmax(),'Date']
+            min_date = stock_data.loc[stock_data['Close_'+stock_symbol].idxmin(),'Date']
+            cur_date = stock_data['Date'][len(stock_data)-1]
+            fig_line.add_trace(go.Scatter(x=[max_date], y=[max_value], mode='markers+text', name='Max Price', marker=dict(color=chart_color, size=13),
+                                          text=[f"Max: ₹{max_value}"], textposition='top center', textfont=dict(size=15)))
+            fig_line.add_trace(go.Scatter(x=[min_date], y=[min_value], mode='markers+text', name='Min Price', marker=dict(color=chart_color, size=13),
+                                          text=[f"Min: ₹{min_value}"], textposition='bottom center', textfont=dict(size=15)))
+            fig_line.add_trace(go.Scatter(x=[cur_date], y=[cur_value], mode='markers+text', name='Curr Price', marker=dict(color='white', size=13),
+                                          text=[f"Curr: ₹{cur_value}"], textposition='top center', textfont=dict(size=15)))
             fig_line.update_layout(title=dict(text=stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="Close Price (INR)",
                                    template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True), width=1350, height=500)
             st.plotly_chart(fig_line)
@@ -429,7 +476,308 @@ if st.session_state.page == "Stock Watchlist":
             st.plotly_chart(fig_candle)
 
 
-# ## Testing Codes
+# ### Get Contents
+
+# In[ ]:
+
+
+if st.session_state.page == "Stock Watchlist":
+    stock_url = stockurls[stock_name]
+    response = requests.get(stock_url)
+    content = bs(response.content, 'html.parser')
+
+
+# ### Basic Info
+
+# In[ ]:
+
+
+if st.session_state.page == "Stock Watchlist":
+    capital = webscrap(content,'Market Cap')
+    capnum = int(''.join(capital.split(',')))
+    stockcmp = webscrap(content,'Current Price')
+    stockcmp = ''.join(stockcmp.split(',')) if stockcmp is not None else stockcmp
+    stockbv = webscrap(content,'Book Value')
+    stockbv = ''.join(stockbv.split(',')) if stockbv is not None else stockbv
+    stockpe = webscrap(content,'Stock P/E')
+    stockpe = stockpe if stockpe is not None else webscrap(content,'P/E')
+    stockpb = webscrap(content,'Price to Book value')
+    stockpb = stockpb if stockpb is not None else webscrap(content,'Price to book value')
+    stockpb = stockpb if stockpb is not None else np.round(float(stockcmp)/float(stockbv),2)
+    stockroe = webscrap(content,'ROE')+"%" if webscrap(content,'ROE') is not None else webscrap(content,'ROE')
+    stockroce = webscrap(content,'ROCE')+"%" if webscrap(content,'ROCE') is not None else webscrap(content,'ROCE')
+    stockdivy = webscrap(content,'Dividend Yield')+"%" if webscrap(content,'Dividend Yield') is not None else webscrap(content,'Dividend Yield')
+    
+    scrapcol1, scrapcol2, scrapcol3, scrapcol4, scrapcol5, scrapcol6, scrapcol7, scrapcol8 = st.columns([0.8,1,0.6,0.6,0.6,0.65,0.65,0.1])
+    with scrapcol1:
+        st.metric("Market Segment",
+        "Mega Cap" if capnum>1000000 else "Large Cap" if capnum>20000 else "Mid Cap" if capnum>5000 else "Small Cap" if capnum>1000 else "Micro Cap")
+    with scrapcol2:
+        st.metric("Market Cap", capital+" Cr")
+    with scrapcol3:
+        st.metric("P/E ratio", stockpe)
+    with scrapcol4:
+        st.metric("P/B ratio", stockpb)
+    with scrapcol5:
+        st.metric("ROE (%)", stockroe)
+    with scrapcol6:
+        st.metric("ROCE (%)", stockroce)
+    with scrapcol7:
+        st.metric("Div. Yield (%)", stockdivy)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ### About, Pros, Cons
+
+# In[ ]:
+
+
+if st.session_state.page == "Stock Watchlist":
+    if industry != "Index":
+        about_string = content.find('div', class_='title', string='About')
+        if about_string:
+            about_parent = about_string.parent
+            about_list = about_parent.find_next('p')
+            if about_list:
+                sup_tag = about_list.find('sup')
+                if sup_tag:
+                    sup_tag.decompose()
+                about_sentence = about_list.text.strip()
+        pros_sentence = ''
+        pros_string = content.find('p', class_='title', string='Pros')
+        if pros_string:
+            pros_parent = pros_string.parent
+            pros_list = pros_parent.find_next('ul')
+            if pros_list:
+                pros = [li.text.strip() for li in pros_list.find_all('li')]
+                for i in range(len(pros)):
+                    pros_sentence += str(i+1)+". "+pros[i]+"<br>"
+        cons_sentence = ''
+        cons_string = content.find('p', class_='title', string='Cons')
+        if cons_string:
+            cons_parent = cons_string.parent
+            cons_list = cons_parent.find_next('ul')
+            if cons_list:
+                cons = [li.text.strip() for li in cons_list.find_all('li')]
+                for i in range(len(cons)):
+                    cons_sentence += str(i+1)+". "+cons[i]+"<br>"
+    
+        with st.expander("Details"):
+            containercol1, containercol2, containercol3 = st.columns([1,1,1])
+            with containercol1:
+                about_container = st.container(border=True)
+                with about_container:
+                    st.markdown(f"""<div style="background-color: #2e88bf; font-size:16px;">About:</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background-color: #2e88bf; font-size:13px;">{about_sentence}</div>""", unsafe_allow_html=True)
+            with containercol2:
+                pros_container = st.container(border=True)
+                with pros_container:
+                    st.markdown(f"""<div style="background-color: #0ac404; font-size:16px;">Pros:</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background-color: #0ac404; font-size:14px;">{pros_sentence}</div>""", unsafe_allow_html=True)
+            with containercol3:
+                cons_container = st.container(border=True)
+                with cons_container:
+                    st.markdown(f"""<div style="background-color: #d12a3d; font-size:16px;">Cons:</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background-color: #d12a3d; font-size:14px;">{cons_sentence}</div>""", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ### Shareholding Pattern
+
+# In[ ]:
+
+
+if st.session_state.page == "Stock Watchlist":
+    if industry != "Index":
+        quarterly_table = content.find("div", {"id": "quarterly-shp"}).find("table", {"class": "data-table"})
+        headers_quarterly = [th.text.strip() for th in quarterly_table.find("thead").find_all("th")]
+        rows_quarterly = []
+        for tr in quarterly_table.find("tbody").find_all("tr"):
+            row = [td.text.strip() for td in tr.find_all("td")]
+            rows_quarterly.append(row)
+        df_quarterly = pd.DataFrame(rows_quarterly, columns=headers_quarterly)
+        df_quarterly = df_quarterly.drop(index=len(df_quarterly)-1)
+        df_quarterly = df_quarterly.rename(columns={'':'Type'})
+        df_quarterly['Type'] = df_quarterly['Type'].str.rstrip(' + ')
+        df_quarterly_cols = df_quarterly.columns.tolist()
+        df_quarterly_cols.remove('Type')
+        for col in df_quarterly_cols:
+            df_quarterly[col] = df_quarterly[col].str.rstrip('%').astype('float')
+        
+        yearly_table = content.find("div", {"id": "yearly-shp"}).find("table", {"class": "data-table"})
+        headers_yearly = [th.text.strip() for th in yearly_table.find("thead").find_all("th")]
+        rows_yearly = []
+        for tr in yearly_table.find("tbody").find_all("tr"):
+            row = [td.text.strip() for td in tr.find_all("td")]
+            rows_yearly.append(row)
+        
+        df_yearly = pd.DataFrame(rows_yearly, columns=headers_yearly)
+        df_yearly = df_yearly.drop(index=len(df_yearly)-1)
+        df_yearly = df_yearly.rename(columns={'':'Type'})
+        df_yearly['Type'] = df_yearly['Type'].str.rstrip(' + ')
+        df_yearly_cols = df_yearly.columns.tolist()
+        df_yearly_cols.remove('Type')
+        for col in df_yearly_cols:
+            df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
+
+        with st.expander("Share Holders"):
+            shareholdingcol1, shareholdingcol2 = st.columns([1,2])
+            shareholders = df_quarterly['Type'].values.tolist()
+            with shareholdingcol1:
+                fig_shpie = go.Figure(data=[go.Pie(labels=shareholders, values=df_quarterly[df_quarterly.columns.tolist()[-1]], hole=0.5,
+                                      textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
+                fig_shpie.update_layout(title=dict(text="Current Share Holders", x=0.5, xanchor="center", font=dict(size=18)),
+                                        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=True, width=320, height=380)
+                st.plotly_chart(fig_shpie)
+            with shareholdingcol2:
+                shareholderscol, shareholdingtenurecol = st.columns([0.75,0.25])
+                with shareholdingtenurecol:
+                    tenure = st.radio("Tenure", ["Quarterly","Yearly"], index=0, horizontal=True)
+                if tenure=="Quarterly":
+                    dfreq = df_quarterly.copy()
+                    dfreqcols = df_quarterly_cols
+                else:
+                    dfreq = df_yearly.copy()
+                    dfreqcols = df_yearly_cols
+                dfreqcolors = color_palette[:len(dfreqcols)]
+                data = []
+                with shareholderscol:
+                    shareholder = st.radio("Share Holder", shareholders, index=0, horizontal=True)
+                filtered_data = dfreq[dfreq["Type"]==shareholder]
+                values = filtered_data.iloc[0,:-1]
+                fig_shbar = go.Figure(data=[go.Bar(x=dfreqcols, y=values, name=shareholder, text=values, textposition="outside", textfont=dict(size=14),
+                                                   marker=dict(color=color_palette[shareholders.index(shareholder)]))])
+                fig_shbar.update_layout(title=dict(text="Share Holding Pattern", x=0.5, xanchor="center", font=dict(size=22)), xaxis_title="Quarter",
+                                        yaxis_title="Percentage(%)",xaxis=dict(categoryorder="array",categoryarray=dfreqcols),yaxis=dict(range=[0,100]),
+                                        height=340, width=830)
+                st.plotly_chart(fig_shbar)
+
+
+# In[ ]:
+
+
+
+
+
+# # Testing Codes
+
+# In[36]:
+
+
+response = requests.get("https://www.screener.in/company/ITC/")
+print(response)
+
+
+# In[37]:
+
+
+soup = bs(response.content, 'html.parser')
+# soup
+
+
+# In[38]:
+
+
+company_name_tag = soup.find('h1', class_='company-name')
+if company_name_tag:
+    print(company_name_tag.text.strip())
+else:
+    company_name_tag = soup.find('h1', class_='margin-0')
+    print(company_name_tag.text.strip())
+
+
+# In[39]:
+
+
+label = 'Market Cap'
+label_tag = soup.find(string=lambda text: text and label in text)
+if label_tag:
+    parent = label_tag.parent
+    value_tag = parent.find_next(class_='number')
+    if value_tag:
+        value_string = value_tag.text.strip()
+        print(value_string)
+
+
+# In[55]:
+
+
+pros_string = soup.find('p', class_='title', string='Pros')
+if pros_string:
+    parent = pros_string.parent
+    pros_list = parent.find_next('ul')
+    if pros_list:
+        pros = [li.text.strip() for li in pros_list.find_all('li')]
+        pros_sentence = ''
+        for i in range(len(pros)):
+            pros_sentence += str(i+1)+". "+pros[i]+"\n"
+print(pros_sentence)
+
+
+# In[56]:
+
+
+pros_string = soup.find('p', class_='title', string='Cons')
+if pros_string:
+    parent = pros_string.parent
+    pros_list = parent.find_next('ul')
+    if pros_list:
+        pros = [li.text.strip() for li in pros_list.find_all('li')]
+        pros_sentence = ''
+        for i in range(len(pros)):
+            pros_sentence += str(i+1)+". "+pros[i]+"\n"
+print(pros_sentence)
+
+
+# In[81]:
+
+
+pros_string = soup.find('div', class_='title', string='About')
+if pros_string:
+    parent = pros_string.parent
+    pros_list = parent.find_next('p')
+    if pros_list:
+        sup_tag = pros_list.find('sup')
+        if sup_tag:
+            sup_tag.decompose()
+        clean_text = pros_list.text.strip()
+print(clean_text)
+
+
+# In[137]:
+
+
+quarterly_table = soup.find("div", {"id": "quarterly-shp"}).find("table", {"class": "data-table"})
+headers_quarterly = [th.text.strip() for th in quarterly_table.find("thead").find_all("th")]
+rows_quarterly = []
+for tr in quarterly_table.find("tbody").find_all("tr"):
+    row = [td.text.strip() for td in tr.find_all("td")]
+    rows_quarterly.append(row)
+df_quarterly = pd.DataFrame(rows_quarterly, columns=headers_quarterly)
+df_quarterly = df_quarterly.drop(index=len(df_quarterly)-1)
+df_quarterly = df_quarterly.rename(columns={'':'Type'})
+df_quarterly['Type'] = df_quarterly['Type'].str.rstrip(' + ')
+df_quarterly_cols = df_quarterly.columns.tolist()
+df_quarterly_cols.remove('Type')
+for col in df_quarterly_cols:
+    df_quarterly[col] = df_quarterly[col].str.rstrip('%').astype('float')
+
+yearly_table = soup.find("div", {"id": "yearly-shp"}).find("table", {"class": "data-table"})
+headers_yearly = [th.text.strip() for th in yearly_table.find("thead").find_all("th")]
+rows_yearly = []
+for tr in yearly_table.find("tbody").find_all("tr"):
+    row = [td.text.strip() for td in tr.find_all("td")]
+    rows_yearly.append(row)
+
+df_yearly = pd.DataFrame(rows_yearly, columns=headers_yearly)
+df_yearly = df_yearly.drop(index=len(df_yearly)-1)
+df_yearly = df_yearly.rename(columns={'':'Type'})
+df_yearly['Type'] = df_yearly['Type'].str.rstrip(' + ')
+df_yearly_cols = df_yearly.columns.tolist()
+df_yearly_cols.remove('Type')
+for col in df_yearly_cols:
+    df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
+
 
 # In[ ]:
 

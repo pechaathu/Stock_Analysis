@@ -4,7 +4,4 @@ pandas==2.1.4
 numpy==1.26.3
 plotly==5.18.0
 datetime==5.4
-contextlib
-io
-sys
-warnings
+beautifulsoup4==4.12.3
