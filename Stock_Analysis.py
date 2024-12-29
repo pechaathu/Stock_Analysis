@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[153]:
+# In[1]:
 
 
 import io
@@ -325,8 +325,7 @@ if st.session_state.page == "Stock Watchlist":
                  'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}/NESTLEIND/', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
                  'Sonata Softwares':f'{web}/SONATASOFTW/{con}', 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}',
-                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}'
-                }
+                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}'}
                  
     st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Watchlist</div>""",
             unsafe_allow_html=True)
@@ -348,18 +347,21 @@ if st.session_state.page == "Stock Watchlist":
         stock_symbol = companies[industry][stock_name]
         st.text_input("Stock Symbol:", stock_symbol, disabled=True)
 
-    try:
-        stock_data = yf.download(stock_symbol)
-    
-        if isinstance(stock_data.columns, pd.MultiIndex):
-            stock_data.columns = ['_'.join(col).strip() for col in stock_data.columns.values]
-        stock_data['Date'] = stock_data.index
-        stock_data = stock_data.reset_index(drop=True)
-        stock_data['50_DMA'] = stock_data['Close_'+stock_symbol].rolling(window=50).mean()
-        stock_data['200_DMA'] = stock_data['Close_'+stock_symbol].rolling(window=200).mean()
-    
-    except Exception as e:
-        st.error(f"Error fetching data: {e}")
+    stock_data = yf.download(stock_symbol)
+
+    if isinstance(stock_data.columns, pd.MultiIndex):
+        stock_data.columns = ['_'.join(col).strip() for col in stock_data.columns.values]
+    stock_data['Date'] = stock_data.index
+    stock_data = stock_data.reset_index(drop=True)
+    stock_data['50_DMA'] = stock_data['Close_'+stock_symbol].rolling(window=50).mean()
+    stock_data['200_DMA'] = stock_data['Close_'+stock_symbol].rolling(window=200).mean()
+
+    alltimehigh = np.round(max(stock_data[['High_'+stock_symbol,'Low_'+stock_symbol,'Open_'+stock_symbol,'Close_'+stock_symbol]].max().tolist()),2)
+    alltimelow = np.round(min(stock_data[['High_'+stock_symbol,'Low_'+stock_symbol,'Open_'+stock_symbol,'Close_'+stock_symbol]].min().tolist()),2)
+    high52week = np.round(stock_data[stock_data['Date']>=(datetime.today()-timedelta(weeks=52))]['High_'+stock_symbol].max(),2)
+    low52week = np.round(stock_data[stock_data['Date']>=(datetime.today()-timedelta(weeks=52))]['Low_'+stock_symbol].min(),2)
+    high3month = np.round(stock_data[stock_data['Date']>(datetime.today()-timedelta(weeks=12))]['High_'+stock_symbol].max(),2)
+    low3month = np.round(stock_data[stock_data['Date']>(datetime.today()-timedelta(weeks=12))]['Low_'+stock_symbol].min(),2)
 
     default_start_date = (stock_data['Date'].max()).to_pydatetime()-timedelta(days=1)
 
@@ -509,6 +511,7 @@ if st.session_state.page == "Stock Watchlist":
     stockdivy = webscrap(content,'Dividend Yield')+"%" if webscrap(content,'Dividend Yield') is not None else webscrap(content,'Dividend Yield')
     
     scrapcol1, scrapcol2, scrapcol3, scrapcol4, scrapcol5, scrapcol6, scrapcol7, scrapcol8 = st.columns([0.8,1,0.6,0.6,0.6,0.65,0.65,0.1])
+    scrapcol9, scrapcol10, scrapcol11, scrapcol12, scrapcol13, scrapcol14 = st.columns([1,1.6,1,1.6,1,1.25])
     with scrapcol1:
         st.metric("Market Segment",
         "Mega Cap" if capnum>1000000 else "Large Cap" if capnum>20000 else "Mid Cap" if capnum>5000 else "Small Cap" if capnum>1000 else "Micro Cap")
@@ -524,6 +527,18 @@ if st.session_state.page == "Stock Watchlist":
         st.metric("ROCE (%)", stockroce)
     with scrapcol7:
         st.metric("Div. Yield (%)", stockdivy)
+    with scrapcol9:
+        st.metric("All time High", "₹"+str(alltimehigh))
+    with scrapcol10:
+        st.metric("All time Low", "₹"+str(alltimelow))
+    with scrapcol11:
+        st.metric("52 Week High", "₹"+str(high52week))
+    with scrapcol12:
+        st.metric("52 Week Low", "₹"+str(low52week))
+    with scrapcol13:
+        st.metric("3 Month High", "₹"+str(high3month))
+    with scrapcol14:
+        st.metric("3 Month Low", "₹"+str(low3month))
     st.markdown("<br>", unsafe_allow_html=True)
 
 
@@ -627,7 +642,7 @@ if st.session_state.page == "Stock Watchlist":
                 fig_shpie = go.Figure(data=[go.Pie(labels=shareholders, values=df_quarterly[df_quarterly.columns.tolist()[-1]], hole=0.5,
                                       textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
                 fig_shpie.update_layout(title=dict(text="Current Share Holders", x=0.5, xanchor="center", font=dict(size=18)),
-                                        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=True, width=320, height=380)
+                                        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=380)
                 st.plotly_chart(fig_shpie)
             with shareholdingcol2:
                 shareholderscol, shareholdingtenurecol = st.columns([0.75,0.25])
@@ -777,6 +792,12 @@ df_yearly_cols = df_yearly.columns.tolist()
 df_yearly_cols.remove('Type')
 for col in df_yearly_cols:
     df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
