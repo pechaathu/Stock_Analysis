@@ -3,22 +3,24 @@
 
 # # Importing Libraries
 
-# In[1]:
+# In[105]:
 
 
 import io
 import sys
 import requests
+import warnings
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import streamlit as st
+import plotly.io as pio
+import plotly.express as px
+import plotly.graph_objects as go
 from bs4 import BeautifulSoup as bs
 from contextlib import redirect_stderr
 from datetime import datetime, timedelta
-import plotly.graph_objects as go
-import plotly.express as px
-import plotly.io as pio
+warnings.filterwarnings('ignore')
 pio.templates["custom_template"] = pio.templates["plotly"]
 pio.templates["custom_template"]["layout"]["colorway"] = px.colors.qualitative.Plotly
 pio.templates.default = "custom_template"
@@ -314,8 +316,9 @@ if st.session_state.page == "Stock Watchlist":
                  'Energy':{"Tata Power":"TATAPOWER.NS", "JSW Energy":"JSWENERGY.NS", "Adani Energy Solutions":"ADANIENSOL.NS"},
                  'Electr Equip':{"Exicom Tele-Systems":"EXICOM.NS","ABB":"ABB.NS"},
                  'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS", "Varun Beverages":"VBL.NS", "Bikaji Foods":"BIKAJI.NS"},
-                 'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS", "Sonata Softwares":"SONATASOFTW.NS"},
-                 'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS"}}
+                 'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS"},
+                 'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS"},
+                 'E-Commerce':{"Zomato":"ZOMATO.NS", "Swiggy":"SWIGGY.NS"}}
     web = 'https://www.screener.in/company/'
     con = 'consolidated/'
     stockurls = {'Nifty50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'NiftyAuto':f'{web}CNXAUTO/', 'Tata Motors':f'{web}TATAMOTORS/{con}',
@@ -324,8 +327,8 @@ if st.session_state.page == "Stock Watchlist":
                  'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}', 'Exicom Tele-Systems':f'{web}EXICOM/{con}',
                  'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}/NESTLEIND/', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
-                 'Sonata Softwares':f'{web}/SONATASOFTW/{con}', 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}',
-                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}'}
+                 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}', 'Mankind Pharma':f'{web}/MANKIND/',
+                 'Natco Pharma':f'{web}/NATCOPHARM/{con}', 'Zomato':f'{web}/ZOMATO/{con}', 'Swiggy':f'{web}/SWIGGY/{con}'}
                  
     st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Watchlist</div>""",
             unsafe_allow_html=True)
@@ -505,7 +508,8 @@ if st.session_state.page == "Stock Watchlist":
     stockpe = stockpe if stockpe is not None else webscrap(content,'P/E')
     stockpb = webscrap(content,'Price to Book value')
     stockpb = stockpb if stockpb is not None else webscrap(content,'Price to book value')
-    stockpb = stockpb if stockpb is not None else np.round(float(stockcmp)/float(stockbv),2)
+    stockpb = stockpb if stockpb is not None else (
+                        np.round(float(stockcmp)/float(stockbv), 2) if stockbv is not None and stockcmp != '' and stockbv != '' else None)
     stockroe = webscrap(content,'ROE')+"%" if webscrap(content,'ROE') is not None else webscrap(content,'ROE')
     stockroce = webscrap(content,'ROCE')+"%" if webscrap(content,'ROCE') is not None else webscrap(content,'ROCE')
     stockdivy = webscrap(content,'Dividend Yield')+"%" if webscrap(content,'Dividend Yield') is not None else webscrap(content,'Dividend Yield')
@@ -597,6 +601,123 @@ if st.session_state.page == "Stock Watchlist":
             st.markdown("<br>", unsafe_allow_html=True)
 
 
+# ### Profit results
+
+# In[ ]:
+
+
+if st.session_state.page == "Stock Watchlist":
+    if industry != "Index":
+        quarterly_profit_content = content.find('h2', string="Quarterly Results")
+        if quarterly_profit_content:
+            quaterly_profit_table = quarterly_profit_content.find_next('table', class_='data-table responsive-text-nowrap')
+            if quaterly_profit_table:
+                quarterly_profit_headers = [th.get_text(strip=True) for th in quaterly_profit_table.find('thead').find_all('th')]
+            rows = []
+            for row in quaterly_profit_table.find("tbody").find_all("tr"):
+                cols = [col.text.strip() for col in row.find_all("td")]
+                rows.append(cols)
+            df_quarterly_results = pd.DataFrame(rows, columns=quarterly_profit_headers)
+            df_quarterly_results = df_quarterly_results.drop(index=len(df_quarterly_results)-1)
+            df_quarterly_results = df_quarterly_results.rename(columns={'':'Type'})
+            df_quarterly_results['Type'] = df_quarterly_results['Type'].str.rstrip('\xa0+')
+            df_quarterly_results = df_quarterly_results[(df_quarterly_results['Type']=="Operating Profit")|
+                                                        (df_quarterly_results['Type']=="Profit before tax")|
+                                                        (df_quarterly_results['Type']=="Net Profit")].reset_index(drop=True)
+            df_quarterly_results_cols = df_quarterly_results.columns.tolist()
+            df_quarterly_results_cols.remove('Type')
+            for col in df_quarterly_results_cols:
+                df_quarterly_results[col] = pd.to_numeric(df_quarterly_results[col].str.replace(',', ''), errors='coerce')
+            
+        
+        profit_loss_content = content.find('h2', string="Profit & Loss")
+        if profit_loss_content:
+            profit_loss_table = profit_loss_content.find_next('table', class_='data-table responsive-text-nowrap')
+            if profit_loss_table:
+                profit_loss_headers = [th.get_text(strip=True) for th in profit_loss_table.find('thead').find_all('th')]
+            rows = []
+            for row in profit_loss_table.find("tbody").find_all("tr"):
+                cols = [col.text.strip() for col in row.find_all("td")]
+                rows.append(cols)
+            df_yearly_results = pd.DataFrame(rows, columns=profit_loss_headers)
+            df_yearly_results = df_yearly_results.drop(index=len(df_yearly_results)-1)
+            df_yearly_results = df_yearly_results.rename(columns={'':'Type'})
+            df_yearly_results['Type'] = df_yearly_results['Type'].str.rstrip('\xa0+')
+            if 'TTM' in df_yearly_results.columns:
+                df_ttm_results = df_yearly_results[['Type','TTM']]
+                df_yearly_results = df_yearly_results.drop(columns=['TTM'])
+            else:
+                df_ttm_results = df_yearly_results[['Type',df_yearly_results.columns.tolist()[-1]]]
+                df_ttm_results = df_ttm_results.rename(columns={df_yearly_results.columns.tolist()[-1]:'TTM'})
+            df_yearly_results = df_yearly_results[(df_yearly_results['Type']=="Operating Profit")|(df_yearly_results['Type']=="Profit before tax")|
+                                                  (df_yearly_results['Type']=="Net Profit")].reset_index(drop=True)
+            df_yearly_results_cols = df_yearly_results.columns.tolist()
+            df_yearly_results_cols.remove('Type')
+            for col in df_yearly_results_cols:
+                df_yearly_results[col] = pd.to_numeric(df_yearly_results[col].str.replace(',', ''), errors='coerce')
+        
+
+            df_ttm_results = df_ttm_results[(df_ttm_results['Type']!="Operating Profit")&(df_ttm_results['Type']!="OPM %")&
+                                            (df_ttm_results['Type']!="Tax %")&(df_ttm_results['Type']!="EPS in Rs")].reset_index(drop=True)
+            df_ttm_results['TTM'] = pd.to_numeric(df_ttm_results['TTM'].str.replace(',', ''), errors='coerce').fillna(0).astype('int')
+            index_to_update = df_ttm_results[df_ttm_results['Type']=="Profit before tax"].index[0]
+            df_ttm_results.at[index_to_update, 'Type'] = "Tax"
+            profit_before_tax = df_ttm_results[df_ttm_results['Type']=="Tax"]['TTM'].values[0]
+            net_profit = df_ttm_results[df_ttm_results['Type']=="Net Profit"]['TTM'].values[0]
+            df_ttm_results.at[index_to_update,'TTM'] = profit_before_tax - net_profit
+            df_ttm_results.loc[df_ttm_results['Type'].isin(["Expenses","Interest","Depreciation","Tax","Net Profit"]),'TTM'] *= -1
+            desired_order = ["Revenue","Sales","Other Income","Expenses","Interest","Depreciation","Tax","Net Profit"]
+            desired_order = [item for item in desired_order if item in df_ttm_results['Type'].values.tolist()]
+            df_ttm_results = df_ttm_results.set_index("Type").loc[desired_order].reset_index()
+
+
+        with st.expander("Profit & Loss"):
+            resultoptioncol, tenureoptioncol, extracol1 = st.columns([1,0.5,1])
+            with tenureoptioncol:
+                prtenure = st.radio("Tenure", ["Quarterly","Yearly"], index=0, horizontal=True, key="profit_tenure")
+            if prtenure=="Quarterly":
+                dfrequired = df_quarterly_results.copy()
+                dfrequiredcols = df_quarterly_results_cols
+            else:
+                dfrequired = df_yearly_results.copy()
+                dfrequiredcols = df_yearly_results_cols
+            dfrequiredcolors = color_palette[:len(dfrequiredcols)]
+            with resultoptioncol:
+                resultoptions = dfrequired['Type'].values.tolist()
+                resultoption = st.radio("Profit", resultoptions, index=0, horizontal=True)
+            
+            barchartcol, waterfallcol = st.columns([1.5,1])
+            with barchartcol:
+                filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
+                values = filtered_data_df.iloc[0,:-1]
+                intvalues = [item for item in values if not isinstance(item, str)]
+                ymax = max(list(intvalues))*1.1
+                fig_pcbar = go.Figure(data=[go.Bar(x=dfrequiredcols, y=values, name=resultoption, text=values, textposition="outside",
+                                                   textfont=dict(size=14), marker=dict(color="#74a5f2"))])
+                fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
+                                        xaxis=dict(categoryorder="array", tickfont=dict(size=9.5), tickangle=0, categoryarray=dfrequiredcols),
+                                        yaxis=dict(range=[0,ymax]), height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
+                st.plotly_chart(fig_pcbar)
+
+            with waterfallcol:
+                text_positions = ['outside']*(len(df_ttm_results)-1) + ['inside']
+                clr = 1 if net_profit<0 else 2
+                df_ttm_results['Type'] = np.where(((df_ttm_results['Type']=="Net Profit")&(df_ttm_results['TTM']>0)),"Net Loss",df_ttm_results['Type'])
+                net_expense = df_ttm_results[(df_ttm_results['Type']!='Revenue')&(df_ttm_results['Type']!='Sales')&
+                                             (df_ttm_results['Type']!='Other Income')&(df_ttm_results['Type']!='Net Profit')]['TTM'].sum()
+                profit_perc = np.round(net_profit/abs(net_expense),1)
+                figwf = go.Figure(go.Waterfall(name="Financial Data", orientation="v", x=df_ttm_results['Type'], y=df_ttm_results['TTM'],
+                                               connector={"line":{"color":color_palette[clr]}},
+                                               text=df_ttm_results['TTM'].apply(lambda x: f"₹ {abs(int(x))}"), textposition=text_positions,
+                                               textfont=dict(size=10), increasing={"marker":{"color":color_palette[clr]}},
+                                               decreasing={"marker":{"color":color_palette[clr]}}))
+                figwf.add_shape(type="line", x0=-0.5, x1=len(df_ttm_results)-0.5, y0=0, y1=0, line=dict(color="white", width=2))
+                figwf.update_layout(title=dict(text=f"Profit-Loss (TTM)  ~   {profit_perc}%", x=0.55, xanchor='center', font=dict(size=18)),
+                                    yaxis_title="₹ in Cr.", yaxis=dict(tickfont=dict(size=9)), xaxis=dict(tickfont=dict(size=9.5),tickangle=0),
+                                    showlegend=False, template="plotly_white", width=500, height=320, margin=dict(t=40,b=10,l=15,r=10))
+                st.plotly_chart(figwf)
+
+
 # ### Shareholding Pattern
 
 # In[ ]:
@@ -618,6 +739,7 @@ if st.session_state.page == "Stock Watchlist":
         df_quarterly_cols.remove('Type')
         for col in df_quarterly_cols:
             df_quarterly[col] = df_quarterly[col].str.rstrip('%').astype('float')
+
         
         yearly_table = content.find("div", {"id": "yearly-shp"}).find("table", {"class": "data-table"})
         headers_yearly = [th.text.strip() for th in yearly_table.find("thead").find_all("th")]
@@ -625,7 +747,6 @@ if st.session_state.page == "Stock Watchlist":
         for tr in yearly_table.find("tbody").find_all("tr"):
             row = [td.text.strip() for td in tr.find_all("td")]
             rows_yearly.append(row)
-        
         df_yearly = pd.DataFrame(rows_yearly, columns=headers_yearly)
         df_yearly = df_yearly.drop(index=len(df_yearly)-1)
         df_yearly = df_yearly.rename(columns={'':'Type'})
@@ -635,6 +756,7 @@ if st.session_state.page == "Stock Watchlist":
         for col in df_yearly_cols:
             df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
 
+            
         with st.expander("Share Holders"):
             shareholdingcol1, shareholdingcol2 = st.columns([1,2])
             shareholders = df_quarterly['Type'].values.tolist()
@@ -647,8 +769,8 @@ if st.session_state.page == "Stock Watchlist":
             with shareholdingcol2:
                 shareholderscol, shareholdingtenurecol = st.columns([0.75,0.25])
                 with shareholdingtenurecol:
-                    tenure = st.radio("Tenure", ["Quarterly","Yearly"], index=0, horizontal=True)
-                if tenure=="Quarterly":
+                    shtenure = st.radio("Tenure", ["Quarterly","Yearly"], index=0, horizontal=True, key="shareholding_tenure")
+                if shtenure=="Quarterly":
                     dfreq = df_quarterly.copy()
                     dfreqcols = df_quarterly_cols
                 else:
@@ -662,7 +784,7 @@ if st.session_state.page == "Stock Watchlist":
                 values = filtered_data.iloc[0,:-1]
                 fig_shbar = go.Figure(data=[go.Bar(x=dfreqcols, y=values, name=shareholder, text=values, textposition="outside", textfont=dict(size=14),
                                                    marker=dict(color=color_palette[shareholders.index(shareholder)]))])
-                fig_shbar.update_layout(title=dict(text="Share Holding Pattern", x=0.5, xanchor="center", font=dict(size=22)), xaxis_title="Quarter",
+                fig_shbar.update_layout(title=dict(text="Share Holding Pattern", x=0.5, xanchor="center", font=dict(size=22)),xaxis_title=shtenure[:-2],
                                         yaxis_title="Percentage(%)",xaxis=dict(categoryorder="array",categoryarray=dfreqcols),yaxis=dict(range=[0,100]),
                                         height=340, width=830)
                 st.plotly_chart(fig_shbar)
@@ -676,93 +798,23 @@ if st.session_state.page == "Stock Watchlist":
 
 # # Testing Codes
 
-# In[36]:
+# In[230]:
 
 
 response = requests.get("https://www.screener.in/company/ITC/")
 print(response)
 
 
-# In[37]:
+# In[107]:
 
 
-soup = bs(response.content, 'html.parser')
-# soup
+content = bs(response.content, 'html.parser')
 
 
-# In[38]:
+# In[115]:
 
 
-company_name_tag = soup.find('h1', class_='company-name')
-if company_name_tag:
-    print(company_name_tag.text.strip())
-else:
-    company_name_tag = soup.find('h1', class_='margin-0')
-    print(company_name_tag.text.strip())
-
-
-# In[39]:
-
-
-label = 'Market Cap'
-label_tag = soup.find(string=lambda text: text and label in text)
-if label_tag:
-    parent = label_tag.parent
-    value_tag = parent.find_next(class_='number')
-    if value_tag:
-        value_string = value_tag.text.strip()
-        print(value_string)
-
-
-# In[55]:
-
-
-pros_string = soup.find('p', class_='title', string='Pros')
-if pros_string:
-    parent = pros_string.parent
-    pros_list = parent.find_next('ul')
-    if pros_list:
-        pros = [li.text.strip() for li in pros_list.find_all('li')]
-        pros_sentence = ''
-        for i in range(len(pros)):
-            pros_sentence += str(i+1)+". "+pros[i]+"\n"
-print(pros_sentence)
-
-
-# In[56]:
-
-
-pros_string = soup.find('p', class_='title', string='Cons')
-if pros_string:
-    parent = pros_string.parent
-    pros_list = parent.find_next('ul')
-    if pros_list:
-        pros = [li.text.strip() for li in pros_list.find_all('li')]
-        pros_sentence = ''
-        for i in range(len(pros)):
-            pros_sentence += str(i+1)+". "+pros[i]+"\n"
-print(pros_sentence)
-
-
-# In[81]:
-
-
-pros_string = soup.find('div', class_='title', string='About')
-if pros_string:
-    parent = pros_string.parent
-    pros_list = parent.find_next('p')
-    if pros_list:
-        sup_tag = pros_list.find('sup')
-        if sup_tag:
-            sup_tag.decompose()
-        clean_text = pros_list.text.strip()
-print(clean_text)
-
-
-# In[137]:
-
-
-quarterly_table = soup.find("div", {"id": "quarterly-shp"}).find("table", {"class": "data-table"})
+quarterly_table = content.find("div", {"id": "quarterly-shp"}).find("table", {"class": "data-table"})
 headers_quarterly = [th.text.strip() for th in quarterly_table.find("thead").find_all("th")]
 rows_quarterly = []
 for tr in quarterly_table.find("tbody").find_all("tr"):
@@ -777,7 +829,7 @@ df_quarterly_cols.remove('Type')
 for col in df_quarterly_cols:
     df_quarterly[col] = df_quarterly[col].str.rstrip('%').astype('float')
 
-yearly_table = soup.find("div", {"id": "yearly-shp"}).find("table", {"class": "data-table"})
+yearly_table = content.find("div", {"id": "yearly-shp"}).find("table", {"class": "data-table"})
 headers_yearly = [th.text.strip() for th in yearly_table.find("thead").find_all("th")]
 rows_yearly = []
 for tr in yearly_table.find("tbody").find_all("tr"):
@@ -794,10 +846,77 @@ for col in df_yearly_cols:
     df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
 
 
-# In[ ]:
+# In[214]:
 
 
+quarterly_profit_content = content.find('h2', string="Quarterly Results")
+if quarterly_profit_content:
+    quaterly_profit_table = quarterly_profit_content.find_next('table', class_='data-table responsive-text-nowrap')
+    if quaterly_profit_table:
+        quarterly_profit_headers = [th.get_text(strip=True) for th in quaterly_profit_table.find('thead').find_all('th')]
+    rows = []
+    for row in quaterly_profit_table.find("tbody").find_all("tr"):
+        cols = [col.text.strip() for col in row.find_all("td")]
+        rows.append(cols)
+    df_quarterly_results = pd.DataFrame(rows, columns=quarterly_profit_headers)
+    df_quarterly_results = df_quarterly_results.drop(index=len(df_quarterly_results)-1)
+    df_quarterly_results = df_quarterly_results.rename(columns={'':'Type'})
+    df_quarterly_results['Type'] = df_quarterly_results['Type'].str.rstrip('\xa0+')
+    df_quarterly_results = df_quarterly_results[(df_quarterly_results['Type']=="Operating Profit")|(df_quarterly_results['Type']=="Profit before tax")|
+                                          (df_quarterly_results['Type']=="Net Profit")].reset_index(drop=True)
+    df_quarterly_results_cols = df_quarterly_results.columns.tolist()
+    df_quarterly_results_cols.remove('Type')
+    for col in df_quarterly_results_cols:
+        df_quarterly_results[col] = pd.to_numeric(df_quarterly_results[col].str.replace(',', ''), errors='coerce')
+    
 
+profit_loss_content = content.find('h2', string="Profit & Loss")
+if profit_loss_content:
+    profit_loss_table = profit_loss_content.find_next('table', class_='data-table responsive-text-nowrap')
+    if profit_loss_table:
+        profit_loss_headers = [th.get_text(strip=True) for th in profit_loss_table.find('thead').find_all('th')]
+    rows = []
+    for row in profit_loss_table.find("tbody").find_all("tr"):
+        cols = [col.text.strip() for col in row.find_all("td")]
+        rows.append(cols)
+    df_yearly_results = pd.DataFrame(rows, columns=profit_loss_headers)
+    df_yearly_results = df_yearly_results.drop(index=len(df_yearly_results)-1)
+    df_yearly_results = df_yearly_results.rename(columns={'':'Type'})
+    df_yearly_results['Type'] = df_yearly_results['Type'].str.rstrip('\xa0+')
+    df_ttm_results = df_yearly_results[['Type','TTM']]
+    df_yearly_results = df_yearly_results.drop(columns=['TTM'])
+    df_yearly_results = df_yearly_results[(df_yearly_results['Type']=="Operating Profit")|(df_yearly_results['Type']=="Profit before tax")|
+                                          (df_yearly_results['Type']=="Net Profit")].reset_index(drop=True)
+    df_yearly_results_cols = df_yearly_results.columns.tolist()
+    df_yearly_results_cols.remove('Type')
+    for col in df_yearly_results_cols:
+        df_yearly_results[col] = pd.to_numeric(df_yearly_results[col].str.replace(',', ''), errors='coerce')
+
+
+    df_ttm_results = df_ttm_results[(df_ttm_results['Type']!="Operating Profit")&(df_ttm_results['Type']!="OPM %")&
+                                    (df_ttm_results['Type']!="Tax %")&(df_ttm_results['Type']!="EPS in Rs")].reset_index(drop=True)
+    df_ttm_results['TTM'] = pd.to_numeric(df_ttm_results['TTM'].str.replace(',', ''), errors='coerce').astype('int')
+    index_to_update = df_ttm_results[df_ttm_results['Type']=="Profit before tax"].index[0]
+    df_ttm_results.at[index_to_update, 'Type'] = "Tax"
+    profit_before_tax = df_ttm_results[df_ttm_results['Type']=="Tax"]['TTM'].values[0]
+    net_profit = df_ttm_results[df_ttm_results['Type']=="Net Profit"]['TTM'].values[0]
+    df_ttm_results.at[index_to_update,'TTM'] = profit_before_tax - net_profit
+    df_ttm_results.loc[df_ttm_results['Type'].isin(["Expenses","Interest","Depreciation","Tax","Net Profit"]),'TTM'] *= -1
+    desired_order = ["Sales","Other Income","Expenses","Interest","Depreciation","Tax","Net Profit"]
+    df_ttm_results = df_ttm_results.set_index("Type").loc[desired_order].reset_index()
+
+
+# In[224]:
+
+
+net_income = df_ttm_results[(df_ttm_results['Type']=='Sales')|(df_ttm_results['Type']=='Other Income')]['TTM'].sum()
+
+
+# In[225]:
+
+
+net_expense = df_ttm_results[(df_ttm_results['Type']!='Sales')&(df_ttm_results['Type']!='Other Income')&
+(df_ttm_results['Type']!='Net Profit')]['TTM'].sum()
 
 
 # In[ ]:
