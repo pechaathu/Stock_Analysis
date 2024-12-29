@@ -621,6 +621,7 @@ if st.session_state.page == "Stock Watchlist":
             df_quarterly_results = df_quarterly_results.drop(index=len(df_quarterly_results)-1)
             df_quarterly_results = df_quarterly_results.rename(columns={'':'Type'})
             df_quarterly_results['Type'] = df_quarterly_results['Type'].str.rstrip('\xa0+')
+            df_quarterly_results = df_quarterly_results.drop(columns=[df_quarterly_results.columns.tolist()[1]])
             df_quarterly_results = df_quarterly_results[(df_quarterly_results['Type']=="Operating Profit")|
                                                         (df_quarterly_results['Type']=="Profit before tax")|
                                                         (df_quarterly_results['Type']=="Net Profit")].reset_index(drop=True)
@@ -643,6 +644,7 @@ if st.session_state.page == "Stock Watchlist":
             df_yearly_results = df_yearly_results.drop(index=len(df_yearly_results)-1)
             df_yearly_results = df_yearly_results.rename(columns={'':'Type'})
             df_yearly_results['Type'] = df_yearly_results['Type'].str.rstrip('\xa0+')
+            df_yearly_results = df_yearly_results.drop(columns=[df_yearly_results.columns.tolist()[1]])
             if 'TTM' in df_yearly_results.columns:
                 df_ttm_results = df_yearly_results[['Type','TTM']]
                 df_yearly_results = df_yearly_results.drop(columns=['TTM'])
@@ -691,7 +693,12 @@ if st.session_state.page == "Stock Watchlist":
                 filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
                 values = filtered_data_df.iloc[0,:-1]
                 intvalues = [item for item in values if not isinstance(item, str)]
-                ymax = max(list(intvalues))*1.1
+                ymax = max(list(intvalues))*1.25
+                if ymax>0:
+                    ymin=0
+                else:
+                    ymin=ymax
+                    ymax=0
                 fig_pcbar = go.Figure(data=[go.Bar(x=dfrequiredcols, y=values, name=resultoption, text=values, textposition="outside",
                                                    textfont=dict(size=14), marker=dict(color="#74a5f2"))])
                 fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
