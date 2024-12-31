@@ -195,14 +195,14 @@ if st.session_state.page == "Stock Portfolio":
         fig_pie = go.Figure(data=[go.Pie(labels=holdings["Stock Name"], values=holdings["Total Investment"], hole=0.5, textfont=dict(size=14))])
         fig_pie.update_layout(title=dict(text="Current Holdings", x=0.5, xanchor="center", font=dict(size=22)),
                               legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=True, width=550, height=450)
-        st.plotly_chart(fig_pie)
+        st.plotly_chart(fig_pie, use_container_width=True)
 
     with colbar:
         fig_bar = go.Figure(data=[go.Bar(x=holdings["Stock Name"], y=holdings["Returns"], marker=dict(color="lightblue"),
                                   text=holdings["Returns"].round(2), textposition="inside", textfont=dict(size=14))])
         fig_bar.update_layout(title=dict(text="Returns (%)", x=0.5, xanchor="center", font=dict(size=22)), xaxis=dict(title="Stock Name",tickangle=-10),
                               yaxis_title="Returns (%)", width=650, height=450)
-        st.plotly_chart(fig_bar)
+        st.plotly_chart(fig_bar, use_container_width=True)
 
     coltree, colline = st.columns([1, 1.25])
     with coltree:
@@ -210,7 +210,7 @@ if st.session_state.page == "Stock Portfolio":
         fig_tree.update_traces(textinfo="label+value+percent entry", textfont_size=14)
         fig_tree.update_layout(title=dict(text="Stock Diversification", x=0.5, xanchor='center', font=dict(size=22)), template="plotly_white",
                                width=550, height=500)
-        st.plotly_chart(fig_tree)
+        st.plotly_chart(fig_tree, use_container_width=True)
 
     with colline:
         fig_inv = go.Figure()
@@ -221,7 +221,7 @@ if st.session_state.page == "Stock Portfolio":
         fig_inv.update_layout(title=dict(text="Stock Investment Journey", x=0.5, xanchor='center', font=dict(size=22)), xaxis_title="Date",
                               yaxis_title="Rupees (₹)", template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True),
                               width=650, height=500, xaxis_range=[pd.Timestamp("2024-11-01"), pd.Timestamp(datetime.today().strftime("%Y-%m-%d"))])
-        st.plotly_chart(fig_inv)
+        st.plotly_chart(fig_inv, use_container_width=True)
 
 
 # ## Mutual Fund Portfolio Page
@@ -281,14 +281,14 @@ if st.session_state.page == "Mutual Fund Portfolio":
         fig_pie = go.Figure(data=[go.Pie(labels=df["Mutual Fund House"], values=df["Amount"], hole=0.5, textfont=dict(size=14))])
         fig_pie.update_layout(title=dict(text="Fund wise Investment breakup", x=0.5, xanchor="center", font=dict(size=22)),
                               legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=True, width=550, height=450)
-        st.plotly_chart(fig_pie)
+        st.plotly_chart(fig_pie, use_container_width=True)
 
     with colbar:
         fig_bar = go.Figure(data=[go.Bar(x=fundhouses, y=returns_list, marker=dict(color="lightblue"), text=returns_list, textposition="inside",
                                          textfont=dict(size=14))])
         fig_bar.update_layout(title=dict(text="Returns (%)", x=0.5, xanchor="center", font=dict(size=22)), xaxis=dict(title="Fund House",tickangle=-10),
                               yaxis_title="Returns (%)", width=650, height=450)
-        st.plotly_chart(fig_bar)
+        st.plotly_chart(fig_bar, use_container_width=True)
 
     dfinv = df.groupby('Date', as_index=False)['Total Investment'].sum()
     dfcur = df.groupby('Date', as_index=False)['Current Value'].sum()
@@ -298,7 +298,7 @@ if st.session_state.page == "Mutual Fund Portfolio":
     fig_inv.update_layout(title=dict(text="Mutual Fund Investment Journey", x=0.5, xanchor='center', font=dict(size=22)), xaxis_title="Date",
                           yaxis_title="Rupees (₹)", template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True),
                           width=1350, height=500)
-    st.plotly_chart(fig_inv)
+    st.plotly_chart(fig_inv, use_container_width=True)
 
 
 # ## Stock Watchlist Page
