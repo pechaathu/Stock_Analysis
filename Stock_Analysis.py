@@ -771,7 +771,7 @@ if st.session_state.page == "Stock Watchlist":
                 fig_shpie = go.Figure(data=[go.Pie(labels=shareholders, values=df_quarterly[df_quarterly.columns.tolist()[-1]], hole=0.5,
                                       textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
                 fig_shpie.update_layout(title=dict(text="Current Share Holders", x=0.5, xanchor="center", font=dict(size=18)),
-                                        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=380, margin=dict(t=200,b=50,l=30,r=30))
+                                        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=380, margin=dict(t=150,b=10,l=30,r=30))
                 st.plotly_chart(fig_shpie, use_container_width=True)
             with shareholdingcol2:
                 shareholderscol, shareholdingtenurecol = st.columns([0.75,0.25])
