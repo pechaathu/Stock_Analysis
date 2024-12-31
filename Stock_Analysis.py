@@ -423,7 +423,7 @@ if st.session_state.page == "Stock Watchlist":
                                               line=dict(color='yellow')))
         fig_compline.update_layout(title=dict(text="Nifty-50  v/s  "+stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="% variation",
                                template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True), width=1350, height=500)
-        st.plotly_chart(fig_compline)
+        st.plotly_chart(fig_compline, use_container_width=True)
 
     else:
         with col6:
@@ -704,7 +704,7 @@ if st.session_state.page == "Stock Watchlist":
                 fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
                                         xaxis=dict(categoryorder="array", tickfont=dict(size=9.5), tickangle=0, categoryarray=dfrequiredcols),
                                         yaxis=dict(range=[0,ymax]), height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
-                st.plotly_chart(fig_pcbar)
+                st.plotly_chart(fig_pcbar, use_container_width=True)
 
             with waterfallcol:
                 text_positions = ['outside']*(len(df_ttm_results)-1) + ['inside']
@@ -722,7 +722,7 @@ if st.session_state.page == "Stock Watchlist":
                 figwf.update_layout(title=dict(text=f"Profit-Loss (TTM)  ~   {profit_perc}%", x=0.55, xanchor='center', font=dict(size=18)),
                                     yaxis_title="₹ in Cr.", yaxis=dict(tickfont=dict(size=9)), xaxis=dict(tickfont=dict(size=9.5),tickangle=0),
                                     showlegend=False, template="plotly_white", width=500, height=320, margin=dict(t=40,b=10,l=15,r=10))
-                st.plotly_chart(figwf)
+                st.plotly_chart(figwf, use_container_width=True)
 
 
 # ### Shareholding Pattern
@@ -772,7 +772,7 @@ if st.session_state.page == "Stock Watchlist":
                                       textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
                 fig_shpie.update_layout(title=dict(text="Current Share Holders", x=0.5, xanchor="center", font=dict(size=18)),
                                         legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=380)
-                st.plotly_chart(fig_shpie)
+                st.plotly_chart(fig_shpie, use_container_width=True)
             with shareholdingcol2:
                 shareholderscol, shareholdingtenurecol = st.columns([0.75,0.25])
                 with shareholdingtenurecol:
@@ -794,7 +794,7 @@ if st.session_state.page == "Stock Watchlist":
                 fig_shbar.update_layout(title=dict(text="Share Holding Pattern", x=0.5, xanchor="center", font=dict(size=22)),xaxis_title=shtenure[:-2],
                                         yaxis_title="Percentage(%)",xaxis=dict(categoryorder="array",categoryarray=dfreqcols),yaxis=dict(range=[0,100]),
                                         height=340, width=830)
-                st.plotly_chart(fig_shbar)
+                st.plotly_chart(fig_shbar, use_container_width=True)
 
 
 # In[ ]:
