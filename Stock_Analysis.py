@@ -465,7 +465,7 @@ if st.session_state.page == "Stock Watchlist":
                                           text=[f"Curr: ₹{cur_value}"], textposition='top center', textfont=dict(size=15)))
             fig_line.update_layout(title=dict(text=stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="Close Price (INR)",
                                    template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True), width=1350, height=500)
-            st.plotly_chart(fig_line)
+            st.plotly_chart(fig_line, use_container_width=True)
     
         elif chart_type=="Candle":
             fig_candle = go.Figure()
@@ -478,7 +478,7 @@ if st.session_state.page == "Stock Watchlist":
             fig_candle.update_layout(title=dict(text=stock_name, x=0.5, xanchor='center'), xaxis_title="Date", yaxis_title="Price (INR)", 
                                      template="plotly_white", xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True),
                                      height=500)
-            st.plotly_chart(fig_candle)
+            st.plotly_chart(fig_candle, use_container_width=True)
 
 
 # ### Get Contents
