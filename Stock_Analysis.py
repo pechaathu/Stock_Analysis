@@ -47,7 +47,7 @@ st.markdown("""<style>.menu-container {display: flex; justify-content: center; a
             }.menu-button.selected {background-color: #0056b3;}.menu-button:hover {background-color: #0056b3;}</style>""", unsafe_allow_html=True)
 
 st.markdown('<div class="menu-container">', unsafe_allow_html=True)
-colmenu1, colmenu2, colmenu3, colmenu4, colmenu5 = st.columns([2,1,1,1,2])
+colmenu1, colmenu2, colmenu3, colmenu4, colmenu5 = st.columns([2,1,1,1,2], use_container_width=True)
 
 with colmenu2:
     if st.button("Stock Portfolio", key="st_portfolio", use_container_width=True):
