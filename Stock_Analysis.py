@@ -430,7 +430,7 @@ if st.session_state.page == "Stock Watchlist":
             st.markdown('<p style="font-size:14px;">Add on:</p>',unsafe_allow_html=True)
             placeholder = st.empty()
             with placeholder.container():
-                cb1, cb2, cb3= st.columns([1,1,1.5])
+                cb1, cb2, cb3= st.columns([1,1.2,1.3])
                 with cb1:
                     dma50 = st.checkbox("50 DMA")
                 with cb2:
