@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[16]:
+
+
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -10,6 +16,9 @@ warnings.filterwarnings('ignore')
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+
+
+# In[17]:
 
 
 def fetch_historical_prices_batch(symbol, dates):
@@ -29,6 +38,9 @@ def fetch_historical_prices_batch(symbol, dates):
         return {}
 
 
+# In[18]:
+
+
 def fetch_current_price(symbol):
     try:
         stock = yf.Ticker(symbol)
@@ -36,6 +48,10 @@ def fetch_current_price(symbol):
     except Exception as e:
         print(f"Error fetching price for {symbol}: {e}")
         return None
+
+
+# In[19]:
+
 
 def calculate_holdings(group):
     buy_units = group.loc[group["Action"] == "Buy", "Units"].sum()
@@ -52,11 +68,17 @@ def calculate_holdings(group):
     return pd.Series({"Total Units": remaining_units, "Total Investment": total_investment})
 
 
+# In[38]:
+
+
 def piechart(dff):
     fig = go.Figure(data=[go.Pie(labels=dff["Stock Name"], values=dff["Total Investment"], hole=0.5, textfont=dict(size=14))])
     fig.update_layout(title=dict(text="Current Holdings", x=0.5, xanchor="center", font=dict(size=22)),
                       legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=True, width=550, height=450)
     return fig
+
+
+# In[73]:
 
 
 def stockperformance(dff, stocklist):
@@ -69,6 +91,9 @@ def stockperformance(dff, stocklist):
         returnsperc = np.round((dff['Net Value'][maxindex]-dff['Net Value'][minindex])/dff['Net Value'][minindex],1)
         string += f"+ ₹{str(returns)} (+{returnsperc}%)<br>" if returns>0 else f"- ₹{str(abs(returns))} (-{returnsperc}%)<br>"
     return string
+
+
+# In[78]:
 
 
 def send_email_with_chart(sender_email, recipient_email, subject, body_text, app_password, dataframe1, dataframe2, mystocks):
@@ -99,6 +124,9 @@ def send_email_with_chart(sender_email, recipient_email, subject, body_text, app
             print(f"Email sent to {recipient_email} successfully.")
     except Exception as e:
         print(f"Error: {e}")
+
+
+# In[23]:
 
 
 df = pd.read_excel("Stock_Database.xlsx")
@@ -139,8 +167,15 @@ stockdffull = pd.concat(stockdf_list,ignore_index=True)
 investment_journey_df = stockdffull.groupby('Date').agg({'Cumulative Investment':'max','Net Value':'sum'}).reset_index()
 
 
+# In[24]:
+
+
 portfolio_performance = np.round(investment_journey_df['Net Value'][len(investment_journey_df)-1
                                  ]-investment_journey_df['Net Value'][len(investment_journey_df)-2],2)
+
+
+# In[25]:
+
 
 sender_email = "eswaraprasath.m@gmail.com"
 recipient_email = "muruganeswaraprasath@gmail.com"
@@ -148,4 +183,15 @@ subject = "Stock Portfolio performance"
 body = f"Your Stock Portfolio performance for {datetime.today().strftime("%d-%b-%Y")} : ₹{portfolio_performance}/-"
 app_password = "dwjs oben nmnp zfas"
 
+
+# In[77]:
+
+
 send_email_with_chart(sender_email, recipient_email, subject, body, app_password, holdings, stockdffull, mystocks)
+
+
+# In[ ]:
+
+
+
+
