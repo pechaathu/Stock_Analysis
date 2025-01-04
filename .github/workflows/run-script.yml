@@ -1,0 +1,26 @@
+name: Run Python Script Daily
+
+on:
+  schedule:
+    # Schedule the workflow to run daily at 10:30 UTC (04:00 PM IST)
+    - cron: '30 10 * * *'
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt || true
+
+      - name: Run Python Script
+        run: Messager.py
