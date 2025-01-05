@@ -3,7 +3,7 @@ name: Run Python Script Daily
 on:
   schedule:
     # Schedule the workflow to run daily at 10:30 UTC (04:00 PM IST)
-    - cron: '55 13 * * *'
+    - cron: '05 14 * * *'
 
 jobs:
   run-script:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
