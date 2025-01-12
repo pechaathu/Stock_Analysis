@@ -3,28 +3,34 @@
 
 # # Importing Libraries
 
-# In[1]:
+# In[5]:
 
 
 import io
 import sys
+import time
+import smtplib
 import requests
 import warnings
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import streamlit as st
+from io import BytesIO
 import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
 from bs4 import BeautifulSoup as bs
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from contextlib import redirect_stderr
 from datetime import datetime, timedelta
-warnings.filterwarnings('ignore')
+from email.mime.multipart import MIMEMultipart
 pio.templates["custom_template"] = pio.templates["plotly"]
 pio.templates["custom_template"]["layout"]["colorway"] = px.colors.qualitative.Plotly
 pio.templates.default = "custom_template"
 color_palette = px.colors.qualitative.Plotly
+warnings.filterwarnings('ignore')
 
 
 # # Page Settings
@@ -108,8 +114,6 @@ def webscrap(webcontent, label):
 
 def prologue(companies):
     comparison = False
-    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Watchlist</div>""",
-            unsafe_allow_html=True)
     headcol1, headcol2 = st.columns([8.5,1.5])
     industries = list(companies.keys())
     with headcol1:
@@ -633,10 +637,15 @@ def shareholding(content, industry):
                 st.plotly_chart(fig_shbar, use_container_width=True)
 
 
+# # Main Dashboard Function
+
 # In[ ]:
 
 
 def main_dashboard():
+    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis dashboard</div>""",
+            unsafe_allow_html=True)
+    
     companies = {'Index':{"Nifty50":"^NSEI", "Sensex":"^BSESN", "NiftyAuto":"^CNXAUTO"}, 
                  'Automotive':{"Tata Motors":"TATAMOTORS.NS", "Mahindra & Mahindra":"M&M.NS", "Hero Motocorp":"HEROMOTOCO.NS"}, 
                  'Banking':{"HDFC":"HDFCBANK.NS", "ICICI":"ICICIBANK.NS", "IOB":"IOB.NS", "SBI":"SBIN.NS"},
@@ -651,7 +660,7 @@ def main_dashboard():
     stockurls = {'Nifty50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'NiftyAuto':f'{web}CNXAUTO/', 'Tata Motors':f'{web}TATAMOTORS/{con}',
                  'Mahindra & Mahindra':f'{web}M&M/{con}', 'Hero Motocorp':f'{web}HEROMOTOCO/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
                  'ICICI':f'{web}ICICIBANK/{con}', 'IOB':f'{web}IOB/', 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}',
-                 'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}', 'Exicom Tele-Systems':f'{web}EXICOM/{con}',
+                 'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}','Exicom Tele-Systems':f'{web}EXICOM/{con}',
                  'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}/NESTLEIND/', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
                  'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}', 'Mankind Pharma':f'{web}/MANKIND/',
@@ -665,6 +674,8 @@ def main_dashboard():
     balancesheet(content, industry)
     shareholding(content, industry)
 
+
+# ## Login Page
 
 # In[ ]:
 
@@ -681,21 +692,21 @@ def load_valid_emails():
 # In[ ]:
 
 
-def login():
-    email_df = pd.read_excel("AccessList.xlsx")
-    email_list = email_df['MailID'].values.tolist()
-    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis dashboard</div>""",
-                unsafe_allow_html=True)
-    logincol1, logincol2, logincol3 = st.columns([1,1,1])
-    with logincol2:
-        email = st.text_input("Email ID", placeholder="Enter your email")
-    if st.button("Login"):
-        if email in email_list:
-            st.success("Login successful! Redirecting to the dashboard...")
-            st.experimental_rerun()
-            main()
-        else:
-            st.error("You don't have access to the dashboard. Please contact Admin.")
+def mail(recipient_email, otpnum):
+    msg = MIMEMultipart()
+    msg['From'] = "eswaraprasath.m@gmail.com"
+    msg['To'] = recipient_email
+    msg['Subject'] = "OTP for Logging into Stock Analysis dashboard"
+
+    msg.attach(MIMEText(f'OTP: {otpnum}', 'plain'))
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login("eswaraprasath.m@gmail.com", "dwjs oben nmnp zfas")
+            text = msg.as_string()
+            server.sendmail("eswaraprasath.m@gmail.com", recipient_email, text)
+    except Exception as e:
+        st.write(f"Error: {e}")
 
 
 # In[ ]:
@@ -704,18 +715,35 @@ def login():
 def login_page(valid_emails):
     st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis dashboard</div>""",
                 unsafe_allow_html=True)
+    st.write("<br>")
     logincol1, logincol2, logincol3 = st.columns([1,1,1])
+    logincol10, logincol11, logincol12 = st.columns([1.15,0.35,1])
+    logincol4, logincol5, logincol6 = st.columns([1,1,1])
+    logincol7, logincol8, logincol9 = st.columns([1.2,0.3,1])
     with logincol2:
         email = st.text_input("Email ID", placeholder="Enter your email")
-    logincol4, logincol5, logincol6 = st.columns([1,0.5,1])
-    with logincol5:
-        if st.button("Login"):
+    with logincol11:
+        if st.button("Generate OTP"):
             if email.strip().lower() in valid_emails:
-                st.session_state["authenticated"] = True
-                st.success("Login successful! Redirecting to the dashboard...")
-                st.experimental_rerun()
+                otp = np.random.randint(100000, 1000000)
+                st.session_state.generated_otp = otp
+                st.session_state.email = email
+                mail(email, otp)
             else:
                 st.error("You don't have access to the dashboard. Please contact admin.")
+
+    if "generated_otp" in st.session_state:
+        with logincol5:
+            otpentry = st.text_input("OTP", placeholder="Enter the OTP, you received in mail")
+        with logincol8:
+            if st.button("Login"):
+                if otpentry == str(st.session_state.generated_otp):
+                    st.success("Login successful! Redirecting to the dashboard...")
+                    time.sleep(3)
+                    st.session_state.page = "Dashboard"
+                    st.experimental_rerun()
+                else:
+                    st.error("Invalid OTP!...")
 
 
 # In[ ]:
@@ -723,20 +751,38 @@ def login_page(valid_emails):
 
 def main():
     valid_emails = load_valid_emails()
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
-
-    if st.session_state["authenticated"]:
-        main_dashboard()
-    else:
+    if "page" not in st.session_state:
+        st.session_state.page = "Login"
+    
+    if st.session_state.page == "Login":
         login_page(valid_emails)
+    elif st.session_state.page == "Dashboard":
+        main_dashboard()
 
 
 # In[ ]:
 
 
 if __name__ == "__main__":
-    main_dashboard()
+    main()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
