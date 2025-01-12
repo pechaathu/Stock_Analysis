@@ -713,9 +713,8 @@ def mail(recipient_email, otpnum):
 
 
 def login_page(valid_emails):
-    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis dashboard</div>""",
+    st.markdown("""<style>.title {text-align:center; font-size:34px; font-weight:bold;}</style><div class="title">Stock Analysis dashboard<br></div>""",
                 unsafe_allow_html=True)
-    st.write("<br>")
     logincol1, logincol2, logincol3 = st.columns([1,1,1])
     logincol10, logincol11, logincol12 = st.columns([1.15,0.35,1])
     logincol4, logincol5, logincol6 = st.columns([1,1,1])
@@ -730,15 +729,15 @@ def login_page(valid_emails):
                 st.session_state.email = email
                 mail(email, otp)
             else:
-                st.error("You don't have access to the dashboard. Please contact admin.")
+                st.error("You don't have access to the dashboard. Please contact Admin.")
 
     if "generated_otp" in st.session_state:
         with logincol5:
-            otpentry = st.text_input("OTP", placeholder="Enter the OTP, you received in mail")
+            otpentry = st.text_input("OTP", placeholder="Enter the OTP received in mail")
         with logincol8:
             if st.button("Login"):
                 if otpentry == str(st.session_state.generated_otp):
-                    st.success("Login successful! Redirecting to the dashboard...")
+                    st.success("Login successful!")
                     time.sleep(3)
                     st.session_state.page = "Dashboard"
                     st.experimental_rerun()
