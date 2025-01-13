@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[5]:
+# In[ ]:
 
 
 import io
@@ -41,9 +41,28 @@ warnings.filterwarnings('ignore')
 st.set_page_config(layout='wide')
 
 
+# In[ ]:
+
+
+def page_navigation():
+    st.markdown("""<style>.menu-container {display: flex; justify-content: center; align-items: center; margin-top: 1px;
+                }.menu-button {padding: 0.2px 0.60x; font-size: 24px; font-weight: bold; background-color: #007BFF; color: white; border: none; 
+                border-radius: 0.1px; margin: 0 0.2px; cursor:pointer; text-align:center; text-decoration: none; transition: background-color 0.3s ease;
+                }.menu-button.selected {background-color: #0056b3;}.menu-button:hover {background-color: #0056b3;}</style>""", unsafe_allow_html=True)
+    st.markdown('<div class="menu-container">', unsafe_allow_html=True)
+    colmenu1, colmenu2, colmenu3, colmenu4 = st.columns([1,1,1,1])
+    with colmenu2:
+        if st.button("Stock Analysis", key="stockanalysis", use_container_width=True):
+            st.session_state.page = "Stock Analysis"
+    with colmenu3:
+        if st.button("Index Performance", key="indexperformance", use_container_width=True):
+            st.session_state.page = "Index Performance"
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
 # # Functions
 
-# In[2]:
+# In[ ]:
 
 
 def calculate_holdings(group):
@@ -60,7 +79,7 @@ def calculate_holdings(group):
     return pd.Series({"Total Units": remaining_units, "Total Investment": total_investment})
 
 
-# In[25]:
+# In[ ]:
 
 
 def fetch_current_price(symbol):
@@ -72,7 +91,7 @@ def fetch_current_price(symbol):
         return None
 
 
-# In[24]:
+# In[ ]:
 
 
 def fetch_historical_prices_batch(symbol, dates):
@@ -92,7 +111,7 @@ def fetch_historical_prices_batch(symbol, dates):
         return {}
 
 
-# In[9]:
+# In[ ]:
 
 
 def webscrap(webcontent, label):
@@ -105,7 +124,7 @@ def webscrap(webcontent, label):
             return value_string
 
 
-# # Stock Watchlist Page
+# # Stock Analysis Page
 
 # ## Stock Filters & Price Chart
 
@@ -114,14 +133,18 @@ def webscrap(webcontent, label):
 
 def prologue(companies):
     comparison = False
-    headcol1, headcol2 = st.columns([8.5,1.5])
+    headcol1, headcol2, headcol3 = st.columns([6.5,1.5,2])
     industries = list(companies.keys())
     with headcol1:
         industry = st.radio("Select Sector:", industries, index=0, horizontal=True)
     stocks = list(companies[industry].keys())
-    with headcol2:
-        st.markdown('<p style="font-size:14px;">Benchmark Comparison:</p>',unsafe_allow_html=True)
-        comparison = st.toggle("NIFTY_50", value=False)
+    if industry!="Index":
+        with headcol2:
+            st.markdown('<p style="font-size:14px;">Index Comparison:</p>',unsafe_allow_html=True)
+            comparison = st.toggle("Yes", value=False)
+        if comparison:
+            with headcol3:
+                selected_index = st.selectbox("Select the Index:", companies['Index'].keys(), index=0)
     
     col1, col2, col3, col4 = st.columns([2.25, 2, 1.5, 1.5])
     
@@ -186,25 +209,26 @@ def prologue(companies):
     stock_data = stock_data[stock_data['Date']>=start_date].reset_index(drop=True)
     
     if comparison==True:
-        bm_data = yf.download("^NSEI")
+        bm_index_symbol = companies['Index'][selected_index]
+        bm_data = yf.download(bm_index_symbol)
         bm_data.columns = ['_'.join(col).strip() for col in bm_data.columns.values]
         bm_data['Date'] = bm_data.index
         bm_data = bm_data[bm_data['Date']>=start_date].reset_index(drop=True)
         bm_data = bm_data.reset_index(drop=True)
         stock_data = pd.merge(stock_data, bm_data, how="left", on='Date')
-        stock_data['Variation_^NSEI'] = np.round(100*(stock_data['Close_^NSEI']-stock_data['Close_^NSEI'][0])/stock_data['Close_^NSEI'][0],2)
-        if stock_symbol!="^NSEI":
-            stock_data['Variation_'+stock_symbol] = np.round(100*(
-                                        stock_data['Close_'+stock_symbol]-stock_data['Close_'+stock_symbol][0])/stock_data['Close_'+stock_symbol][0],2)
+        stock_data['Variation_'+bm_index_symbol] = np.round(100*(
+                            stock_data['Close_'+bm_index_symbol]-stock_data['Close_'+bm_index_symbol][0])/stock_data['Close_'+bm_index_symbol][0],2)
+        stock_data['Variation_'+stock_symbol] = np.round(100*(
+                                    stock_data['Close_'+stock_symbol]-stock_data['Close_'+stock_symbol][0])/stock_data['Close_'+stock_symbol][0],2)
         
         fig_compline = go.Figure()
         fig_compline.add_trace(go.Scatter(x=stock_data['Date'],y=stock_data['Variation_'+stock_symbol],mode='lines',name=stock_name,
                                           line=dict(color='blue')))
-        if stock_symbol!="^NSEI":
-            fig_compline.add_trace(go.Scatter(x=stock_data['Date'],y=stock_data['Variation_^NSEI'],mode='lines',name='Nifty 50',
-                                              line=dict(color='yellow')))
-        fig_compline.update_layout(title=dict(text="Nifty-50  v/s  "+stock_name, x=0.5, xanchor='center'), xaxis_title="Date",yaxis_title="% variation",
-                               template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True), width=1350, height=500)
+        fig_compline.add_trace(go.Scatter(x=stock_data['Date'],y=stock_data['Variation_'+bm_index_symbol],mode='lines',name=selected_index,
+                                          line=dict(color='yellow')))
+        fig_compline.update_layout(title=dict(text=f"Benchmark Index ({selected_index})  v/s  "+stock_name,x=0.5,xanchor='center'), xaxis_title="Date",
+                                   yaxis_title="% variation", template="plotly_white", xaxis=dict(showgrid=True), yaxis=dict(showgrid=True),
+                                   width=1350, height=500)
         st.plotly_chart(fig_compline, use_container_width=True)
     
     else:
@@ -637,34 +661,46 @@ def shareholding(content, industry):
                 st.plotly_chart(fig_shbar, use_container_width=True)
 
 
-# # Main Dashboard Function
+# # Stock Analysis page
 
 # In[ ]:
 
 
-def main_dashboard():
-    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis dashboard</div>""",
-            unsafe_allow_html=True)
-    
-    companies = {'Index':{"Nifty50":"^NSEI", "Sensex":"^BSESN", "NiftyAuto":"^CNXAUTO"}, 
-                 'Automotive':{"Tata Motors":"TATAMOTORS.NS", "Mahindra & Mahindra":"M&M.NS", "Hero Motocorp":"HEROMOTOCO.NS"}, 
+def stock_analysis():
+    companies = {'Index':{"Nifty 50":"^NSEI", "Sensex":"^BSESN", "Nifty Auto":"^CNXAUTO", "Nifty Bank":"^NSEBANK", "Nifty Commodities":"^CNXCMDT",
+                          "Nifty Energy":"^CNXENERGY", "Nifty FMCG":"^CNXFMCG", "Nifty IT":"^CNXIT", "Nifty Infrastructure":"^CNXINFRA",
+                          "Nifty Media":"^CNXMEDIA", "Nifty Metal":"^CNXMETAL", "Nifty Realty":"^CNXREALTY"},
+                 'Automotive':{"Tata Motors":"TATAMOTORS.NS", "Mahindra & Mahindra":"M&M.NS","Hyundai":"HYUNDAI.NS","Hero Motocorp":"HEROMOTOCO.NS",
+                               "Maruti Suzuki":"MARUTI.NS", "TVS Motors":"TVSMOTOR.NS", "Bajaj Auto":"BAJAJ-AUTO.NS", "Ola Electric":"OLAELEC.NS",
+                               "Eicher Motors":"EICHERMOT.NS", "Ashok Leyland":"ASHOKLEY.NS", "Force Motors":"FORCEMOT.NS"}, 
                  'Banking':{"HDFC":"HDFCBANK.NS", "ICICI":"ICICIBANK.NS", "IOB":"IOB.NS", "SBI":"SBIN.NS"},
                  'Energy':{"Tata Power":"TATAPOWER.NS", "JSW Energy":"JSWENERGY.NS", "Adani Energy Solutions":"ADANIENSOL.NS"},
                  'Electr Equip':{"Exicom Tele-Systems":"EXICOM.NS","ABB":"ABB.NS"},
-                 'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS", "Varun Beverages":"VBL.NS", "Bikaji Foods":"BIKAJI.NS"},
-                 'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS"},
+                 'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS","Dabur":"DABUR.NS","Hindustan Unilever":"HINDUNILVR.NS","Britannia":"BRITANNIA.NS",
+                         "Godrej":"GODREJCP.NS", "Hatsun":"HATSUN.NS", "Tata Consumer Products":"TATACONSUM.NS", "Varun Beverages":"VBL.NS",
+                         "Bikaji Foods":"BIKAJI.NS"},
+                 'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS", "KPIT":"KPITTECH.NS"},
                  'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS"},
                  'E-Commerce':{"Zomato":"ZOMATO.NS", "Swiggy":"SWIGGY.NS"}}
     web = 'https://www.screener.in/company/'
     con = 'consolidated/'
-    stockurls = {'Nifty50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'NiftyAuto':f'{web}CNXAUTO/', 'Tata Motors':f'{web}TATAMOTORS/{con}',
-                 'Mahindra & Mahindra':f'{web}M&M/{con}', 'Hero Motocorp':f'{web}HEROMOTOCO/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
+    stockurls = {'Nifty 50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'Nifty Auto':f'{web}CNXAUTO/', 'Nifty Bank':f'{web}BANKNIFTY/',
+                 'Nifty Commodities':f'{web}CNXCOMMODI/', 'Nifty Energy':f'{web}CNXENERY/', 'Nifty FMCG':f'{web}CNXFMCG/',
+                 'Nifty IT':f'{web}CNXIT/', 'Nifty Infrastructure':f'{web}CNXINFRAST/', 'Nifty Media':f'{web}CNXMEDIA/',
+                 'Nifty Metal':f'{web}CNXMETAL/', 'Nifty Pharma':f'{web}CNXPHARMA/', 'Nifty Realty':f'{web}CNXREALTY/',
+                 'Tata Motors':f'{web}TATAMOTORS/{con}', 'Mahindra & Mahindra':f'{web}M&M/{con}', 'Hyundai':f'{web}HYUNDAI/',
+                 'Hero Motocorp':f'{web}HEROMOTOCO/{con}', 'Maruti Suzuki':f'{web}MARUTI/{con}', 'TVS Motors':f'{web}TVSMOTOR/{con}',
+                 'Bajaj Auto':f'{web}BAJAJ-AUTO/{con}', 'Ola Electric':f'{web}OLAELEC/{con}', 'Eicher Motors':f'{web}EICHERMOT/{con}',
+                 'Ashok Leyland':f'{web}ASHOKLEY/{con}', 'Force Motors':f'{web}FORCEMOT/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
                  'ICICI':f'{web}ICICIBANK/{con}', 'IOB':f'{web}IOB/', 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}',
                  'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}','Exicom Tele-Systems':f'{web}EXICOM/{con}',
-                 'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}/NESTLEIND/', 'Varun Beverages':f'{web}/VBL/{con}',
+                 'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}NESTLEIND/', 'Dabur':f'{web}DABUR/{con}',
+                 'Hindustan Unilever':f'{web}HINDUNILVR/{con}', 'Britannia':f'{web}BRITANNIA/{con}', 'Godrej':f'{web}GODREJCP/{con}',
+                 'Hatsun':f'{web}HATSUN/', 'Tata Consumer Products':f'{web}TATACONSUM/{con}', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
-                 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}', 'Mankind Pharma':f'{web}/MANKIND/',
-                 'Natco Pharma':f'{web}/NATCOPHARM/{con}', 'Zomato':f'{web}/ZOMATO/{con}', 'Swiggy':f'{web}/SWIGGY/{con}'}
+                 'KPIT':f'{web}KPITTECH/{con}', 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}',
+                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}', 'Zomato':f'{web}/ZOMATO/{con}',
+                 'Swiggy':f'{web}/SWIGGY/{con}'}
 
     stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
     content = getcontents(stockurls, stock_name)
@@ -673,6 +709,115 @@ def main_dashboard():
     profitloss(content, industry)
     balancesheet(content, industry)
     shareholding(content, industry)
+
+
+# # Index Performance page
+
+# In[ ]:
+
+
+def index_performance():
+    indices = {"Nifty 50":"^NSEI", "Sensex":"^BSESN", "Nifty Auto":"^CNXAUTO", "Nifty Bank":"^NSEBANK", "Nifty Commodities":"^CNXCMDT",
+               "Nifty Energy":"^CNXENERGY", "Nifty FMCG":"^CNXFMCG", "Nifty IT":"^CNXIT", "Nifty Infrastructure":"^CNXINFRA",
+               "Nifty Media":"^CNXMEDIA", "Nifty Metal":"^CNXMETAL", "Nifty Realty":"^CNXREALTY"}
+    web = 'https://www.screener.in/company/'
+    indexurls = {'Nifty 50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'Nifty Auto':f'{web}CNXAUTO/', 'Nifty Bank':f'{web}BANKNIFTY/',
+                 'Nifty Commodities':f'{web}CNXCOMMODI/', 'Nifty Energy':f'{web}CNXENERY/', 'Nifty FMCG':f'{web}CNXFMCG/',
+                 'Nifty IT':f'{web}CNXIT/', 'Nifty Infrastructure':f'{web}CNXINFRAST/', 'Nifty Media':f'{web}CNXMEDIA/',
+                 'Nifty Metal':f'{web}CNXMETAL/', 'Nifty Pharma':f'{web}CNXPHARMA/', 'Nifty Realty':f'{web}CNXREALTY/'}
+    index_names = list(indices.keys())
+    date_ranges = ["1D", "3D", "1W", "2W", "1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "Max"]
+    
+    incol1, incol2, incol3 = st.columns([1,3,1])
+    with incol2:
+        date_range = st.radio("Select Date Range:", date_ranges, index=7, horizontal=True)
+    
+    default_start_date = datetime.today() - timedelta(days=1)
+    
+    if date_range == "1D":
+        start_date = default_start_date
+        term = "1 Day"
+    elif date_range == "3D":
+        start_date = default_start_date - timedelta(days=3)
+        term = "3 Days"
+    elif date_range == "1W":
+        start_date = default_start_date - timedelta(weeks=1)
+        term = "1 Week"
+    elif date_range == "2W":
+        start_date = default_start_date - timedelta(weeks=2)
+        term = "2 Weeks"
+    elif date_range == "1M":
+        start_date = default_start_date - timedelta(days=30)
+        term = "1 Month"
+    elif date_range == "3M":
+        start_date = default_start_date - timedelta(days=30 * 3)
+        term = "3 Months"
+    elif date_range == "6M":
+        start_date = default_start_date - timedelta(days=30 * 6)
+        term = "6 Months"
+    elif date_range == "1Y":
+        start_date = default_start_date - timedelta(days=365)
+        term = "1 Year"
+    elif date_range == "2Y":
+        start_date = default_start_date - timedelta(days=2 * 365)
+        term = "2 Years"
+    elif date_range == "3Y":
+        start_date = default_start_date - timedelta(days=3 * 365)
+        term = "3 Years"
+    elif date_range == "5Y":
+        start_date = default_start_date - timedelta(days=5 * 365)
+        term = "5 Years"
+    else:
+        term = "Overall"
+
+    indexdf_list = []
+    for indexname in index_names:
+        try:
+            indexdf = yf.download(indices[indexname])
+            if isinstance(indexdf.columns, pd.MultiIndex):
+                indexdf.columns = ['_'.join(col).strip() for col in indexdf.columns.values]
+            indexdf['Date'] = indexdf.index
+            if date_range!="Max":
+                indexdf = indexdf[indexdf['Date']>=start_date]
+            indexdf = indexdf.reset_index(drop=True)
+        except:
+            indexdf = pd.DataFrame()
+        indexdf_list.append(indexdf)
+    index_prfm = []
+    colors = []
+    for i in range(len(index_names)):
+        df = indexdf_list[i]
+        indexname = indices[index_names[i]]
+        if len(df)>0:
+            index_returns = np.round(100*((df['Close_'+indexname].iloc[-1])-(df['Close_'+indexname].iloc[0]))/(df['Close_'+indexname].iloc[0]),1)
+        else:
+            index_returns = 0
+        color = 'green' if index_returns>0 else 'red'
+        index_prfm.append(index_returns)
+        colors.append(color)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    fig_indret = go.Figure(go.Bar(x=index_names, y=index_prfm, orientation='v', text=index_prfm, textposition="outside", marker=dict(color=colors)))
+    fig_indret.update_layout(title=dict(text=f"Index Performance - {term}", x=0.55,xanchor="center",font=dict(size=22)), yaxis_title="Performance (%)",
+                            xaxis_title="Index", height=500, width=650, margin=dict(t=40,b=10,l=10,r=10))
+    st.plotly_chart(fig_indret, use_container_width=True)
+
+
+# # Main Function
+
+# In[ ]:
+
+
+def main_dashboard():
+    st.markdown("""<style>.title {text-align: center; font-size: 34px; font-weight: bold;}</style><div class="title">Stock Analysis</div>""",
+            unsafe_allow_html=True)
+    page_navigation()
+
+    if st.session_state.page == "Stock Analysis":
+        stock_analysis()
+
+    elif st.session_state.page == "Index Performance":
+        index_performance()
 
 
 # ## Login Page
@@ -739,7 +884,7 @@ def login_page(valid_emails):
                 if otpentry == str(st.session_state.generated_otp):
                     st.success("Login successful!")
                     time.sleep(3)
-                    st.session_state.page = "Dashboard"
+                    st.session_state.page = "Stock Analysis"
                     st.experimental_rerun()
                 else:
                     st.error("Invalid OTP!...")
@@ -755,7 +900,9 @@ def main():
     
     if st.session_state.page == "Login":
         login_page(valid_emails)
-    elif st.session_state.page == "Dashboard":
+    elif st.session_state.page == "Stock Analysis":
+        main_dashboard()
+    elif st.session_state.page == "Index Performance":
         main_dashboard()
 
 
@@ -764,24 +911,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
