@@ -685,7 +685,8 @@ def stock_analysis():
                  'HealthCare':{"Apollo Hospitals":"APOLLOHOSP.NS", "Narayana Hrudayalaya":"NH.NS"},
                  'E-Commerce':{"Zomato":"ZOMATO.NS", "Swiggy":"SWIGGY.NS"},
                  'Defence':{"Hindustan Aeronautics":"HAL.NS", "Bharat Electronics":"BEL.NS", "Bharat Dynamics":"BDL.NS",
-                            "Mazagon Dock ShipBuilders":"MAZDOCK.NS", "Garden Reach ShipBuilders":"GRSE.NS"}}
+                            "Mazagon Dock ShipBuilders":"MAZDOCK.NS", "Garden Reach ShipBuilders":"GRSE.NS"},
+                 'Waste Recycle':{"Ganesha Ecosphere":"GANECOS.NS", "Antony Waste Handling Cell":"AWHCL.NS", "Eco Recycling":"ECORECO.BO"}}
     web = 'https://www.screener.in/company/'
     con = 'consolidated/'
     stockurls = {'Nifty 50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'Nifty Auto':f'{web}CNXAUTO/', 'Nifty Bank':f'{web}BANKNIFTY/',
@@ -707,7 +708,8 @@ def stock_analysis():
                  'Apollo Hospitals':f'{web}/APOLLOHOSP/{con}', 'Narayana Hrudayalaya':f'{web}/NH/{con}',
                  'Zomato':f'{web}/ZOMATO/{con}', 'Swiggy':f'{web}/SWIGGY/{con}', 'Hindustan Aeronautics':f'{web}/HAL/',
                  'Bharat Electronics':f'{web}/BEL/{con}', 'Bharat Dynamics':f'{web}/BDL/', 'Mazagon Dock ShipBuilders':f'{web}/MAZDOCK/{con}',
-                 'Garden Reach ShipBuilders':f'{web}/GRSE/{con}'}
+                 'Garden Reach ShipBuilders':f'{web}/GRSE/{con}', 'Ganesha Ecosphere':f'{web}/GANECOS/{con}',
+                 'Antony Waste Handling Cell':f'{web}/AWHCL/{con}', 'Eco Recycling':f'{web}/530643/{con}'}
 
     stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
     content = getcontents(stockurls, stock_name)
