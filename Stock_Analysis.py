@@ -675,13 +675,17 @@ def stock_analysis():
                                "Eicher Motors":"EICHERMOT.NS", "Ashok Leyland":"ASHOKLEY.NS", "Force Motors":"FORCEMOT.NS"}, 
                  'Banking':{"HDFC":"HDFCBANK.NS", "ICICI":"ICICIBANK.NS", "IOB":"IOB.NS", "SBI":"SBIN.NS"},
                  'Energy':{"Tata Power":"TATAPOWER.NS", "JSW Energy":"JSWENERGY.NS", "Adani Energy Solutions":"ADANIENSOL.NS"},
-                 'Electr Equip':{"Exicom Tele-Systems":"EXICOM.NS","ABB":"ABB.NS"},
+                 'Electr Equip':{"Exicom Tele-Systems":"EXICOM.NS", "ABB":"ABB.NS", "Tata Elxsi":"TATAELXSI.NS"},
                  'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS","Dabur":"DABUR.NS","Hindustan Unilever":"HINDUNILVR.NS","Britannia":"BRITANNIA.NS",
                          "Godrej":"GODREJCP.NS", "Hatsun":"HATSUN.NS", "Tata Consumer Products":"TATACONSUM.NS", "Varun Beverages":"VBL.NS",
                          "Bikaji Foods":"BIKAJI.NS"},
                  'IT':{"TCS":"TCS.NS", "Wipro":"WIPRO.NS", "Tech Mahindra":"TECHM.NS", "KPIT":"KPITTECH.NS"},
-                 'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS"},
-                 'E-Commerce':{"Zomato":"ZOMATO.NS", "Swiggy":"SWIGGY.NS"}}
+                 'Pharma':{"Cipla":"CIPLA.NS", "Sun Pharma":"SPARC.NS", "Mankind Pharma":"MANKIND.NS", "Natco Pharma":"NATCOPHARM.NS",
+                           "Laurus Labs":"LAURUSLABS.NS"},
+                 'HealthCare':{"Apollo Hospitals":"APOLLOHOSP.NS", "Narayana Hrudayalaya":"NH.NS"},
+                 'E-Commerce':{"Zomato":"ZOMATO.NS", "Swiggy":"SWIGGY.NS"},
+                 'Defence':{"Hindustan Aeronautics":"HAL.NS", "Bharat Electronics":"BEL.NS", "Bharat Dynamics":"BDL.NS",
+                            "Mazagon Dock ShipBuilders":"MAZDOCK.NS", "Garden Reach ShipBuilders":"GRSE.NS"}}
     web = 'https://www.screener.in/company/'
     con = 'consolidated/'
     stockurls = {'Nifty 50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'Nifty Auto':f'{web}CNXAUTO/', 'Nifty Bank':f'{web}BANKNIFTY/',
@@ -694,13 +698,16 @@ def stock_analysis():
                  'Ashok Leyland':f'{web}ASHOKLEY/{con}', 'Force Motors':f'{web}FORCEMOT/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
                  'ICICI':f'{web}ICICIBANK/{con}', 'IOB':f'{web}IOB/', 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}',
                  'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}','Exicom Tele-Systems':f'{web}EXICOM/{con}',
-                 'ABB':f'{web}ABB/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}NESTLEIND/', 'Dabur':f'{web}DABUR/{con}',
+                 'ABB':f'{web}ABB/', 'Tata Elxsi':f'{web}/TATAELXSI/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}NESTLEIND/','Dabur':f'{web}DABUR/{con}',
                  'Hindustan Unilever':f'{web}HINDUNILVR/{con}', 'Britannia':f'{web}BRITANNIA/{con}', 'Godrej':f'{web}GODREJCP/{con}',
                  'Hatsun':f'{web}HATSUN/', 'Tata Consumer Products':f'{web}TATACONSUM/{con}', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
                  'KPIT':f'{web}KPITTECH/{con}', 'Cipla':f'{web}/CIPLA/{con}', 'Sun Pharma':f'{web}/SUNPHARMA/{con}',
-                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}', 'Zomato':f'{web}/ZOMATO/{con}',
-                 'Swiggy':f'{web}/SWIGGY/{con}'}
+                 'Mankind Pharma':f'{web}/MANKIND/', 'Natco Pharma':f'{web}/NATCOPHARM/{con}', 'Laurus Labs':f'{web}/LAURUSLABS/{con}',
+                 'Apollo Hospitals':f'{web}/APOLLOHOSP/{con}', 'Narayana Hrudayalaya':f'{web}/NH/{con}',
+                 'Zomato':f'{web}/ZOMATO/{con}', 'Swiggy':f'{web}/SWIGGY/{con}', 'Hindustan Aeronautics':f'{web}/HAL/',
+                 'Bharat Electronics':f'{web}/BEL/{con}', 'Bharat Dynamics':f'{web}/BDL/', 'Mazagon Dock ShipBuilders':f'{web}/MAZDOCK/{con}',
+                 'Garden Reach ShipBuilders':f'{web}/GRSE/{con}'}
 
     stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
     content = getcontents(stockurls, stock_name)
@@ -839,7 +846,7 @@ def load_valid_emails():
 
 def mail(recipient_email, otpnum):
     msg = MIMEMultipart()
-    msg['From'] = "eswaraprasath.m@gmail.com"
+    msg['From'] = "stockanalysiswithesh@gmail.com"
     msg['To'] = recipient_email
     msg['Subject'] = "OTP for Logging into Stock Analysis dashboard"
 
@@ -847,9 +854,9 @@ def mail(recipient_email, otpnum):
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
-            server.login("eswaraprasath.m@gmail.com", "dwjs oben nmnp zfas")
+            server.login("stockanalysiswithesh@gmail.com", "zseo rzfw zgwr aduv")
             text = msg.as_string()
-            server.sendmail("eswaraprasath.m@gmail.com", recipient_email, text)
+            server.sendmail("stockanalysiswithesh@gmail.com", recipient_email, text)
     except Exception as e:
         st.write(f"Error: {e}")
 
