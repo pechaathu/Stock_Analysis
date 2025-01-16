@@ -336,8 +336,6 @@ if st.session_state.page == "Mutual Fund Portfolio":
     st.plotly_chart(fig_inv, use_container_width=True)
 
 
-# ### Stock Filters & Price Chart
-
 # In[ ]:
 
 
@@ -514,8 +512,6 @@ if st.session_state.page == "Mutual Fund Portfolio":
 #             st.plotly_chart(fig_candle, use_container_width=True)
 
 
-# ### Get Contents
-
 # In[ ]:
 
 
@@ -524,8 +520,6 @@ if st.session_state.page == "Stock Watchlist":
     response = requests.get(stock_url)
     content = bs(response.content, 'html.parser')
 
-
-# ### Basic Info
 
 # In[ ]:
 
@@ -579,8 +573,6 @@ if st.session_state.page == "Stock Watchlist":
     st.markdown("<br>", unsafe_allow_html=True)
 
 
-# ### About, Pros, Cons
-
 # In[ ]:
 
 
@@ -633,8 +625,6 @@ if st.session_state.page == "Stock Watchlist":
                     st.markdown(f"""<div style="background-color: #d12a3d; font-size:14px;">{cons_sentence}</div>""", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
-
-# ### Profit results
 
 # In[ ]:
 
@@ -758,8 +748,6 @@ if st.session_state.page == "Stock Watchlist":
                 st.plotly_chart(figwf, use_container_width=True)
 
 
-# ### Balance Sheet
-
 # In[ ]:
 
 
@@ -812,8 +800,6 @@ if st.session_state.page == "Stock Watchlist":
                                       width=500, height=320, margin=dict(t=40,b=10,l=15,r=10))
                 st.plotly_chart(figliab, use_container_width=True)
 
-
-# ### Shareholding Pattern
 
 # In[ ]:
 
