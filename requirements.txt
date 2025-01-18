@@ -6,3 +6,4 @@ numpy==1.26.3
 plotly==5.18.0
 datetime==5.4
 beautifulsoup4==4.12.3
+nselib==1.5
