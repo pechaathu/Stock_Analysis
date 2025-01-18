@@ -20,6 +20,7 @@ from io import BytesIO
 import plotly.io as pio
 import plotly.express as px
 import plotly.graph_objects as go
+from nselib import capital_market
 from bs4 import BeautifulSoup as bs
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -285,7 +286,55 @@ def prologue(companies):
                                      template="plotly_white", xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True),
                                      height=500)
             st.plotly_chart(fig_candle, use_container_width=True)
+
+    if industry!="Index":
+        i=0
+        condn = True
+        while condn:
+            try:
+                date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
+                delivdf = capital_market.bhav_copy_with_delivery(date)
+                delivdf = delivdf[delivdf['SYMBOL']==stock_symbol.split(".")[0]].reset_index(drop=True)
+                condn = False
+            except:
+                i+=1
+        trdqty = delivdf['TTL_TRD_QNTY'][0]
+        delqty = delivdf['DELIV_QTY'][0]
+        figdeliv = go.Figure()
+        figdeliv.add_trace(go.Bar(x=[trdqty], y=["Bar"], orientation='h', marker=dict(color="lightblue"), text=[trdqty], name="Traded Quantity"))
+        figdeliv.add_trace(go.Bar(x=[delqty], y=["Bar"], orientation='h', marker=dict(color="blue"), text=[delqty], name="Delivery Quantity"))
+        figdeliv.update_layout(title=dict(text=stock_name+" - "+date+" (Traded and Delivered Quantity)", x=0.5, xanchor='center'),
+                               xaxis_title="Quantity count", yaxis_title=stock_name, template="plotly_white", height=350,
+                               xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True))
+        st.plotly_chart(figdeliv, use_container_width=True)
+    
     return stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month
+
+
+# In[ ]:
+
+
+i=0
+condn = True
+while condn:
+    try:
+        date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
+        delivdf = capital_market.bhav_copy_with_delivery(date)
+        delivdf = delivdf[delivdf['SYMBOL']==stock_symbol.split(".")[0]].reset_index(drop=True)
+        condn = False
+    except:
+        i+=1
+trdqty = delivdf['TTL_TRD_QNTY'][0]
+delqty = delivdf['DELIV_QTY'][0]
+figdeliv = go.Figure()
+figdeliv.add_trace(go.Bar(x=[trdqty], y=["Bar"], orientation='h', marker=dict(color="lightblue"), text=[trdqty], name="Traded Quantity",
+                          layout=dict(barcornerradius=15)))
+figdeliv.add_trace(go.Bar(x=[delqty], y=["Bar"], orientation='h', marker=dict(color="blue"), text=[delqty], name="Delivery Quantity",
+                         layout=dict(barcornerradius=15)))
+figdeliv.update_layout(title=dict(text=stock_name+" - "+date+" (Traded and Delivered Quantity)", x=0.5, xanchor='center'),
+                       xaxis_title="Quantity count", yaxis_title=stock_name, template="plotly_white", height=350,
+                       xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True))
+st.plotly_chart(figdeliv, use_container_width=True)
 
 
 # ### Get Contents
@@ -905,7 +954,7 @@ def login_page(valid_emails):
 def main():
     valid_emails = load_valid_emails()
     if "page" not in st.session_state:
-        st.session_state.page = "Login"
+        st.session_state.page = "Stock Analysis"
     
     if st.session_state.page == "Login":
         login_page(valid_emails)
@@ -921,6 +970,20 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# # Testing Codes
 
 # In[ ]:
 
