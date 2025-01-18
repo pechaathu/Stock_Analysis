@@ -670,6 +670,12 @@ def shareholding(content, industry):
 
 def deliveryqty(industry, stock_symbol, stock_name):
     if industry!="Index":
+        placeholder = st.empty()
+        loading_gif_url = "https://i.gifer.com/74pZ.gif"
+        with placeholder.container():
+            imagecol1, imagecol2, imagecol3 = st.columns([3,1,3])
+            with imagecol2:
+                st.image(loading_gif_url, caption="Loading... Please wait (Traded Quantity)", use_column_width=True)
         delivdf = pd.DataFrame()
         for i in range(30,0,-1):
             try:
@@ -680,6 +686,7 @@ def deliveryqty(industry, stock_symbol, stock_name):
                 delivdf = pd.concat([delivdf, deldf], ignore_index=True)
             except:
                 pass
+        placeholder.empty()
         figdeliv = go.Figure()
         figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['TTL_TRD_QNTY'], marker=dict(color="lightblue"), text=delivdf['TTL_TRD_QNTY'],
                                   name="Total Traded Quantity"))
@@ -935,7 +942,7 @@ def login_page(valid_emails):
 def main():
     valid_emails = load_valid_emails()
     if "page" not in st.session_state:
-        st.session_state.page = "Stock Analysis"
+        st.session_state.page = "Login"
     
     if st.session_state.page == "Login":
         login_page(valid_emails)
