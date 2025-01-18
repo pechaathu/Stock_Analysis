@@ -286,29 +286,8 @@ def prologue(companies):
                                      template="plotly_white", xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True),
                                      height=500)
             st.plotly_chart(fig_candle, use_container_width=True)
-
-    if industry!="Index":
-        i=0
-        condn = True
-        while condn:
-            try:
-                date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
-                delivdf = capital_market.bhav_copy_with_delivery(date)
-                delivdf = delivdf[delivdf['SYMBOL']==stock_symbol.split(".")[0]].reset_index(drop=True)
-                condn = False
-            except:
-                i+=1
-        trdqty = delivdf['TTL_TRD_QNTY'][0]
-        delqty = delivdf['DELIV_QTY'][0]
-        figdeliv = go.Figure()
-        figdeliv.add_trace(go.Bar(x=[trdqty], y=["Bar"], orientation='h', marker=dict(color="lightblue"), text=[trdqty], name="Traded Quantity"))
-        figdeliv.add_trace(go.Bar(x=[delqty], y=["Bar"], orientation='h', marker=dict(color="blue"), text=[delqty], name="Delivery Quantity"))
-        figdeliv.update_layout(title=dict(text=stock_name+" - "+date+" (Traded and Delivered Quantity)", x=0.5, xanchor='center'),
-                               xaxis_title="Quantity count", yaxis_title=stock_name, template="plotly_white", height=350,
-                               xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True))
-        st.plotly_chart(figdeliv, use_container_width=True)
     
-    return stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month
+    return stock_name, stock_symbol, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month
 
 
 # ### Get Contents
@@ -684,6 +663,33 @@ def shareholding(content, industry):
                 st.plotly_chart(fig_shbar, use_container_width=True)
 
 
+# ### Delivery Quantity
+
+# In[ ]:
+
+
+def deliveryqty(industry, stock_symbol, stock_name):
+    if industry!="Index":
+        delivdf = pd.DataFrame()
+        for i in range(30,0,-1):
+            try:
+                date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
+                deldf = capital_market.bhav_copy_with_delivery(date)
+                deldf['Date'] = pd.to_datetime(date,format="%d-%m-%Y")
+                deldf = deldf[deldf['SYMBOL']==stock_symbol.split(".")[0]][['Date','TTL_TRD_QNTY','DELIV_QTY']].reset_index(drop=True)
+                delivdf = pd.concat([delivdf, deldf], ignore_index=True)
+            except:
+                pass
+        figdeliv = go.Figure()
+        figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['TTL_TRD_QNTY'], marker=dict(color="lightblue"), text=delivdf['TTL_TRD_QNTY'],
+                                  name="Total Traded Quantity"))
+        figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['DELIV_QTY'], marker=dict(color="blue"), text=delivdf['DELIV_QTY'],
+                                  name="Delivery Quantity"))
+        figdeliv.update_layout(barmode='overlay', title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 30 days)", x=0.5, xanchor='center'),
+                               yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550, width=200)
+        st.plotly_chart(figdeliv, use_container_width=True)
+
+
 # # Stock Analysis page
 
 # In[ ]:
@@ -734,13 +740,14 @@ def stock_analysis():
                  'Garden Reach ShipBuilders':f'{web}/GRSE/{con}', 'Ganesha Ecosphere':f'{web}/GANECOS/{con}',
                  'Antony Waste Handling Cell':f'{web}/AWHCL/{con}', 'Eco Recycling':f'{web}/530643/{con}'}
 
-    stock_name, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
+    stock_name, stock_symbol, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
     content = getcontents(stockurls, stock_name)
     basicinfo(content, alltimehigh, alltimelow, high52week, low52week, high3month, low3month)
     proscons(content, industry)
     profitloss(content, industry)
     balancesheet(content, industry)
     shareholding(content, industry)
+    deliveryqty(industry, stock_symbol, stock_name)
 
 
 # # Index Performance page
@@ -958,6 +965,18 @@ if __name__ == "__main__":
 
 
 # # Testing Codes
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
 
 # In[ ]:
 
