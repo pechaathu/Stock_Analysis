@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[ ]:
+# In[43]:
 
 
 import io
@@ -663,6 +663,35 @@ def shareholding(content, industry):
                 st.plotly_chart(fig_shbar, use_container_width=True)
 
 
+# ### Dividends
+
+# In[ ]:
+
+
+def dividends(industry, stock_symbol, stock_name):
+    if industry!="Index":
+        with st.expander("Dividends"):
+            dividcol1, dividcol2 = st.columns([8,1])
+            tickerdata = yf.Ticker(stock_symbol)
+            dividdf = pd.DataFrame(tickerdata.dividends).reset_index()
+            dividdf['Year'] = dividdf['Date'].dt.year
+            dividdf['Date'] = pd.to_datetime(dividdf['Date']).dt.date
+            yearwisediv = dividdf.groupby(['Year'])['Dividends'].sum()
+            ymax = yearwisediv.max()*1.1
+            with dividcol1:
+                figdivd = go.Figure()
+                figdivd.add_trace(go.Bar(x=dividdf['Year'], y=dividdf['Dividends'], name='Dividends', textposition="outside",
+                                         textfont=dict(size=12), marker=dict(color=color_palette[0])))
+                figdivd.update_layout(title=dict(text="Dividends", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="Rupees (₹)", height=310,
+                                      width=750, margin=dict(t=40,b=10,l=15,r=10), yaxis=dict(range=[0,ymax]),
+                                      xaxis=dict(title="Year", tickmode='linear', dtick=1, tickfont=dict(size=10)))
+                st.plotly_chart(figdivd, use_container_width=True)
+            with dividcol2:
+                st.metric("No. Dividend Payouts:", len(dividdf))
+                st.metric("Median Dividend (₹):", "₹"+str(np.round(dividdf['Dividends'].median(),2)))
+                st.metric("Median Last 5 Payouts:", "₹"+str(np.round(dividdf['Dividends'][-5:].median(),2)))
+
+
 # ### Delivery Quantity
 
 # In[ ]:
@@ -670,31 +699,32 @@ def shareholding(content, industry):
 
 def deliveryqty(industry, stock_symbol, stock_name):
     if industry!="Index":
-        placeholder = st.empty()
-        loading_gif_url = "https://i.gifer.com/74pZ.gif"
-        with placeholder.container():
-            imagecol1, imagecol2, imagecol3 = st.columns([3,1,3])
-            with imagecol2:
-                st.image(loading_gif_url, caption="Loading... Please wait (Traded Quantity)", use_column_width=True)
-        delivdf = pd.DataFrame()
-        for i in range(30,0,-1):
-            try:
-                date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
-                deldf = capital_market.bhav_copy_with_delivery(date)
-                deldf['Date'] = pd.to_datetime(date,format="%d-%m-%Y")
-                deldf = deldf[deldf['SYMBOL']==stock_symbol.split(".")[0]][['Date','TTL_TRD_QNTY','DELIV_QTY']].reset_index(drop=True)
-                delivdf = pd.concat([delivdf, deldf], ignore_index=True)
-            except:
-                pass
-        placeholder.empty()
-        figdeliv = go.Figure()
-        figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['TTL_TRD_QNTY'], marker=dict(color="lightblue"), text=delivdf['TTL_TRD_QNTY'],
-                                  name="Total Traded Quantity"))
-        figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['DELIV_QTY'], marker=dict(color="blue"), text=delivdf['DELIV_QTY'],
-                                  name="Delivery Quantity"))
-        figdeliv.update_layout(barmode='overlay', title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 30 days)", x=0.5, xanchor='center'),
-                               yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550, width=200)
-        st.plotly_chart(figdeliv, use_container_width=True)
+        with st.expander("Delivery Quantity"):
+            placeholder = st.empty()
+            loading_gif_url = "https://i.gifer.com/74pZ.gif"
+            with placeholder.container():
+                imagecol1, imagecol2, imagecol3 = st.columns([3,1,3])
+                with imagecol2:
+                    st.image(loading_gif_url, caption="Loading... Please wait.", use_column_width=True)
+            delivdf = pd.DataFrame()
+            for i in range(30,0,-1):
+                try:
+                    date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
+                    deldf = capital_market.bhav_copy_with_delivery(date)
+                    deldf['Date'] = pd.to_datetime(date,format="%d-%m-%Y")
+                    deldf = deldf[deldf['SYMBOL']==stock_symbol.split(".")[0]][['Date','TTL_TRD_QNTY','DELIV_QTY']].reset_index(drop=True)
+                    delivdf = pd.concat([delivdf, deldf], ignore_index=True)
+                except:
+                    pass
+            placeholder.empty()
+            figdeliv = go.Figure()
+            figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['TTL_TRD_QNTY'], marker=dict(color="lightblue"), text=delivdf['TTL_TRD_QNTY'],
+                                      name="Total Traded Quantity"))
+            figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['DELIV_QTY'], marker=dict(color="blue"), text=delivdf['DELIV_QTY'],
+                                      name="Delivery Quantity"))
+            figdeliv.update_layout(title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 30 days)", x=0.5, xanchor='center'), width=200,
+                                   barmode='overlay', yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550)
+            st.plotly_chart(figdeliv, use_container_width=True)
 
 
 # # Stock Analysis page
@@ -754,6 +784,7 @@ def stock_analysis():
     profitloss(content, industry)
     balancesheet(content, industry)
     shareholding(content, industry)
+    dividends(industry, stock_symbol, stock_name)
     deliveryqty(industry, stock_symbol, stock_name)
 
 
@@ -972,6 +1003,12 @@ if __name__ == "__main__":
 
 
 # # Testing Codes
+
+# In[ ]:
+
+
+
+
 
 # In[ ]:
 
