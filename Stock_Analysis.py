@@ -688,8 +688,8 @@ def dividends(industry, stock_symbol, stock_name):
                 st.plotly_chart(figdivd, use_container_width=True)
             with dividcol2:
                 st.metric("No. Dividend Payouts:", len(dividdf))
-                st.metric("Median Dividend (₹):", "₹"+str(np.round(dividdf['Dividends'].median(),2)))
-                st.metric("Median Last 5 Payouts:", "₹"+str(np.round(dividdf['Dividends'][-5:].median(),2)))
+                st.metric("Median Dividend (₹):", "₹"+str(np.round(dividdf[dividdf['Dividends']>0]['Dividends'].median(),2)))
+                st.metric("Median Last 5 Payouts:", "₹"+str(np.round(dividdf[dividdf['Dividends']>0]['Dividends'][-5:].median(),2)))
 
 
 # ### Delivery Quantity
@@ -739,7 +739,7 @@ def stock_analysis():
                  'Automotive':{"Tata Motors":"TATAMOTORS.NS", "Mahindra & Mahindra":"M&M.NS","Hyundai":"HYUNDAI.NS","Hero Motocorp":"HEROMOTOCO.NS",
                                "Maruti Suzuki":"MARUTI.NS", "TVS Motors":"TVSMOTOR.NS", "Bajaj Auto":"BAJAJ-AUTO.NS", "Ola Electric":"OLAELEC.NS",
                                "Eicher Motors":"EICHERMOT.NS", "Ashok Leyland":"ASHOKLEY.NS", "Force Motors":"FORCEMOT.NS"}, 
-                 'Banking':{"HDFC":"HDFCBANK.NS", "ICICI":"ICICIBANK.NS", "IOB":"IOB.NS", "SBI":"SBIN.NS"},
+                 'Banking':{"HDFC":"HDFCBANK.NS", "ICICI":"ICICIBANK.NS", "Kotak":"KOTAKBANK.NS", "Axis":"AXISBANK.NS", "IOB":"IOB.NS","SBI":"SBIN.NS"},
                  'Energy':{"Tata Power":"TATAPOWER.NS", "JSW Energy":"JSWENERGY.NS", "Adani Energy Solutions":"ADANIENSOL.NS"},
                  'Electr Equip':{"Exicom Tele-Systems":"EXICOM.NS", "ABB":"ABB.NS", "Tata Elxsi":"TATAELXSI.NS"},
                  'FMCG':{"ITC":"ITC.NS", "Nestle":"NESTLEIND.NS","Dabur":"DABUR.NS","Hindustan Unilever":"HINDUNILVR.NS","Britannia":"BRITANNIA.NS",
@@ -763,9 +763,10 @@ def stock_analysis():
                  'Hero Motocorp':f'{web}HEROMOTOCO/{con}', 'Maruti Suzuki':f'{web}MARUTI/{con}', 'TVS Motors':f'{web}TVSMOTOR/{con}',
                  'Bajaj Auto':f'{web}BAJAJ-AUTO/{con}', 'Ola Electric':f'{web}OLAELEC/{con}', 'Eicher Motors':f'{web}EICHERMOT/{con}',
                  'Ashok Leyland':f'{web}ASHOKLEY/{con}', 'Force Motors':f'{web}FORCEMOT/{con}', 'HDFC':f'{web}HDFCBANK/{con}',
-                 'ICICI':f'{web}ICICIBANK/{con}', 'IOB':f'{web}IOB/', 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}',
-                 'JSW Energy':f'{web}JSWENERGY/{con}', 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}','Exicom Tele-Systems':f'{web}EXICOM/{con}',
-                 'ABB':f'{web}ABB/', 'Tata Elxsi':f'{web}/TATAELXSI/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}NESTLEIND/','Dabur':f'{web}DABUR/{con}',
+                 'ICICI':f'{web}ICICIBANK/{con}', 'Kotak':f'{web}/KOTAKBANK/{con}', 'Axis':f'{web}/AXISBANK/{con}', 'IOB':f'{web}IOB/',
+                 'SBI':f'{web}SBIN/{con}', 'Tata Power':f'{web}TATAPOWER/{con}', 'JSW Energy':f'{web}JSWENERGY/{con}',
+                 'Adani Energy Solutions':f'{web}ADANIENSOL/{con}','Exicom Tele-Systems':f'{web}EXICOM/{con}', 'ABB':f'{web}ABB/',
+                 'Tata Elxsi':f'{web}/TATAELXSI/', 'ITC':f'{web}ITC/{con}', 'Nestle':f'{web}NESTLEIND/','Dabur':f'{web}DABUR/{con}',
                  'Hindustan Unilever':f'{web}HINDUNILVR/{con}', 'Britannia':f'{web}BRITANNIA/{con}', 'Godrej':f'{web}GODREJCP/{con}',
                  'Hatsun':f'{web}HATSUN/', 'Tata Consumer Products':f'{web}TATACONSUM/{con}', 'Varun Beverages':f'{web}/VBL/{con}',
                  'Bikaji Foods':f'{web}/BIKAJI/', 'TCS':f'{web}/TCS/{con}', 'Wipro':f'{web}/WIPRO/{con}', 'Tech Mahindra':f'{web}/TECHM/{con}',
@@ -1003,18 +1004,6 @@ if __name__ == "__main__":
 
 
 # # Testing Codes
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
 
 # In[ ]:
 
