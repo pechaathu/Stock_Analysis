@@ -502,8 +502,11 @@ def profitloss(content, industry):
             with barchartcol:
                 filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
                 filtered_data_df
+                dfrequiredcols
                 values = filtered_data_df.iloc[0,:-1]
+                values
                 intvalues = [item for item in values if not isinstance(item, str)]
+                intvalues
                 ymin = min(list(intvalues))*1.25 if min(list(intvalues))<0 else 0
                 ymax = max(list(intvalues))*1.25 if max(list(intvalues))>0 else 0
                 
