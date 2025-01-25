@@ -720,7 +720,8 @@ def deliveryqty(industry, stock_symbol, stock_name):
             figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['DELIV_QTY'], marker=dict(color="blue"), text=delivdf['DELIV_QTY'],
                                       name="Delivery Quantity"))
             figdeliv.update_layout(title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 30 days)", x=0.5, xanchor='center'), width=200,
-                                   barmode='overlay', yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550)
+                                   barmode='overlay', yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550,
+                                   xaxis=dict(tickmode='linear', dtick=1, tickfont=dict(size=10)))
             st.plotly_chart(figdeliv, use_container_width=True)
 
 
