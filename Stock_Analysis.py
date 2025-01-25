@@ -503,6 +503,7 @@ def profitloss(content, industry):
                 filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
                 values = filtered_data_df.iloc[0,:-1]
                 intvalues = [item for item in values if not isinstance(item, str)]
+                ymin = min(list(intvalues))*-1.25 if min(list(intvalues))<0 else 0
                 ymax = max(list(intvalues))*1.25
                 if ymax>0:
                     ymin=0
@@ -513,7 +514,7 @@ def profitloss(content, industry):
                                                    textfont=dict(size=14), marker=dict(color="#74a5f2"))])
                 fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
                                         xaxis=dict(categoryorder="array", tickfont=dict(size=9.5), tickangle=0, categoryarray=dfrequiredcols),
-                                        yaxis=dict(range=[0,ymax]), height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
+                                        yaxis=dict(range=[ymin,ymax]), height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
                 st.plotly_chart(fig_pcbar, use_container_width=True)
     
             with waterfallcol:
