@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[43]:
+# In[2]:
 
 
 import io
@@ -727,7 +727,7 @@ def deliveryqty(industry, stock_symbol, stock_name):
             st.plotly_chart(figdeliv, use_container_width=True)
 
 
-# # Stock Analysis page
+# # Stock Analysis function call
 
 # In[ ]:
 
@@ -790,6 +790,164 @@ def stock_analysis():
 
 
 # # Index Performance page
+
+# In[ ]:
+
+
+def sector_extract(sector_url):
+    response = requests.get(sector_url)
+    soup = bs(response.content, "html.parser")
+    pagination = soup.find("div", class_="pagination")
+    if not pagination:
+        total_pages = 1
+    else:
+        page_links = pagination.find_all("a", class_="ink-900")
+        total_pages = int(page_links[-1].text.strip()) if page_links else 1
+    
+    stock_names = []
+    latest_quarter_sales = []
+        
+    for page in range(1, total_pages+1):
+        url = f"{sector_url}?page={page}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            continue
+        soup = bs(response.content, "html.parser")
+        table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+        if not table:
+            continue
+        rows = table.find_all("tr")[1:]
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) >= 9:
+                stock_name = cells[1].text.strip()
+                sales_qtr = cells[8].text.strip()
+                stock_names.append(stock_name)
+                latest_quarter_sales.append(sales_qtr)
+    
+    df = pd.DataFrame({"Stock Name": stock_names, "Sales": latest_quarter_sales})
+    df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce').fillna(0).astype('float')
+    df['Percentage'] = 100*df['Sales']/df['Sales'].sum()
+    df['Percentage'] = df['Percentage'].round(1)
+    df = df.sort_values(by=['Percentage'], ascending=False).reset_index(drop=True)
+    df['Cumulative_Percentage'] = df['Percentage'].cumsum()
+    return df    
+
+
+# In[ ]:
+
+
+def industry_extract(sector_url, url_range):
+    inddf = []
+    indname = []
+    for i in range(url_range[0], url_range[1]+1):
+        industry_url = f"{sector_url}{i:08d}/"
+        response = requests.get(industry_url)
+        soup = bs(response.content, "html.parser")
+        pagination = soup.find("div", class_="pagination")
+        if not pagination:
+            total_pages = 1
+        else:
+            page_links = pagination.find_all("a", class_="ink-900")
+            total_pages = int(page_links[-1].text.strip()) if page_links else 1
+            
+        stock_names = []
+        latest_quarter_sales = []
+    
+        for page in range(1, total_pages+1):
+            url = f"{industry_url}?page={page}"
+            response = requests.get(url)
+            if response.status_code != 200:
+                continue
+            soup = bs(response.content, "html.parser")
+            table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+            if not table:
+                continue
+            rows = table.find_all("tr")[1:]
+            for row in rows:
+                cells = row.find_all("td")
+                if len(cells) >= 9:
+                    stock_name = cells[1].text.strip()
+                    sales_qtr = cells[8].text.strip()
+                    stock_names.append(stock_name)
+                    latest_quarter_sales.append(sales_qtr)
+        
+        df = pd.DataFrame({"Stock Name": stock_names, "Sales": latest_quarter_sales})
+        df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce').fillna(0).astype('float')
+        df['Percentage'] = 100*df['Sales']/df['Sales'].sum()
+        df['Percentage'] = df['Percentage'].round(1)
+        df = df.sort_values(by=['Percentage'], ascending=False).reset_index(drop=True)
+        df['Cumulative_Percentage'] = df['Percentage'].cumsum()
+        
+        inddf.append(df)
+        indname.append(soup.title.string)
+    return inddf, indname
+
+
+# In[ ]:
+
+
+def market_share(sector_urls, industry_urls):
+    st.markdown("<br>Current Market Share", unsafe_allow_html=True)
+    sectorcol1, sectorcol2, sectorcol3 = st.columns([3,1,3])
+    with sectorcol1:
+        sectorname = st.selectbox("Select the Sector:", list(sector_urls.keys()), index=0)
+    sector_url = sector_urls[sectorname]
+
+    sector_market_share_df = sector_extract(sector_url)
+    
+    desired_binsize = 100
+    whileloopcondition = True
+    while whileloopcondition:
+        if len(sector_market_share_df[sector_market_share_df['Cumulative_Percentage']<desired_binsize])<10:
+            whileloopcondition = False
+        else:
+            desired_binsize-=5
+    sector_market_share_df['Stock Name'] = np.where(sector_market_share_df['Cumulative_Percentage']>desired_binsize, "Others",
+                                                    sector_market_share_df['Stock Name'])
+    
+    sectorcol4, sectorcol5, sectorcol6 = st.columns([3,1,3])
+    with sectorcol4:
+        fig_market_share = go.Figure(data=[go.Pie(labels=sector_market_share_df['Stock Name'], values=sector_market_share_df['Percentage'], hole=0.5,
+                                                  textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
+        fig_market_share.update_layout(title=dict(text="Current Market Share", x=0.5, xanchor="center", font=dict(size=18)), height=450,showlegend=True,
+                                       legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), margin=dict(t=40,b=10,l=30,r=30))
+        st.plotly_chart(fig_market_share, use_container_width=True)
+
+    with sectorcol2:
+        st.write("Sector Break down")
+        sector_breakdown = st.toggle("On", value=True)
+
+    if sector_breakdown:
+        industry_url_range = industry_urls[sectorname]
+        industry_market_share_df_list, industry_names_list = industry_extract(sector_url, industry_url_range)
+        industry_names_list = [i.split(' - Screener')[0] for i in industry_names_list if ' - Screener' in i]
+        industry_names_list = [i.split(' Companies')[0] for i in industry_names_list if ' Companies' in i]
+        industry_names_list = [i.split(' - ')[1] for i in industry_names_list if ('Automobiles - ' in i)|('Banks - ' in i)]
+        
+        with sectorcol3:
+            industryname = st.selectbox("Select the Industry:", industry_names_list, index=0)
+            indindex = industry_names_list.index(industryname)
+        
+        desired_binsize = 100
+        whileloopcondition = True
+        while whileloopcondition:
+            if len(industry_market_share_df_list[indindex][industry_market_share_df_list[indindex]['Cumulative_Percentage']<desired_binsize])<10:
+                whileloopcondition = False
+            else:
+                desired_binsize-=5
+        industry_market_share_df_list[indindex]['Stock Name'] = np.where(
+                                                        industry_market_share_df_list[indindex]['Cumulative_Percentage']>desired_binsize, "Others",
+                                                        industry_market_share_df_list[indindex]['Stock Name'])
+
+        with sectorcol6:
+            fig_market_share2 = go.Figure(data=[go.Pie(labels=industry_market_share_df_list[indindex]['Stock Name'],
+                                                       values=industry_market_share_df_list[indindex]['Percentage'], hole=0.5,
+                                                       textfont=dict(size=14), textinfo='percent', direction='clockwise', sort=False)])
+            fig_market_share2.update_layout(title=dict(text="Current Market Share", x=0.5, xanchor="center", font=dict(size=18)), showlegend=True,
+                                           legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), height=450, margin=dict(t=40,b=10,l=30,r=30))
+            st.plotly_chart(fig_market_share2, use_container_width=True)
+
 
 # In[ ]:
 
@@ -876,9 +1034,17 @@ def index_performance():
     
     st.markdown("<br>", unsafe_allow_html=True)
     fig_indret = go.Figure(go.Bar(x=index_names, y=index_prfm, orientation='v', text=index_prfm, textposition="outside", marker=dict(color=colors)))
-    fig_indret.update_layout(title=dict(text=f"Index Performance - {term}", x=0.55,xanchor="center",font=dict(size=22)), yaxis_title="Performance (%)",
+    fig_indret.update_layout(title=dict(text=f"Index Performance - {term}", x=0.55,xanchor="center",font=dict(size=25)), yaxis_title="Performance (%)",
                             xaxis_title="Index", height=500, width=650, margin=dict(t=40,b=10,l=10,r=10))
     st.plotly_chart(fig_indret, use_container_width=True)
+
+    web2 = web+"compare/"
+    secotr_urls = {'Automobile':f'{web2}00000005/', 'Banking':f'{web2}00000006/', 'Energy':f'{web2}00000049/', 'FMCG':f'{web2}00000027/',
+                   'IT':f'{web2}00000034/', 'Infrastructure':f'{web2}00000032/', 'Media':f'{web2}00000024/', 'Mining & Mineral':f'{web2}00000038/',
+                   'Metal':f'{web2}00000057/', 'Pharmaceutical':f'{web2}00000046/', 'Realty':f'{web2}00000051/'}
+    industry_urls = {'Automobile':(5,9), 'Banking':(11,12), 'Energy':(76,76), 'FMCG':(53,54), 'IT':(26,30), 'Infrastructure':(45,45), 'Media':(47,47),
+                     'Mining & Mineral':(59,59), 'Metal':(84,86), 'Pharmaceutical':(70,73), 'Realty':(31,31)}
+    market_share(secotr_urls, industry_urls)
 
 
 # # Main Function
@@ -1005,10 +1171,97 @@ if __name__ == "__main__":
 
 # # Testing Codes
 
-# In[ ]:
+# In[15]:
 
 
+# from tqdm.notebook import tqdm
+# sector_url = "https://www.screener.in/company/compare/00000005/"
+# base_url = sector_url
 
+# response = requests.get(sector_url)
+# soup = bs(response.content, "html.parser")
+
+# pagination = soup.find("div", class_="pagination")
+# if not pagination:
+#     total_pages = 1
+# else:
+#     page_links = pagination.find_all("a", class_="ink-900")
+#     total_pages = int(page_links[-1].text.strip()) if page_links else 1
+
+# stock_names = []
+# latest_quarter_sales = []
+
+# for page in range(1, total_pages + 1):
+#     url = f"{base_url}?page={page}"
+#     response = requests.get(url)
+#     if response.status_code != 200:
+#         continue
+    
+#     soup = bs(response.content, "html.parser")
+    
+#     table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+#     if not table:
+#         continue
+    
+#     rows = table.find_all("tr")[1:]
+    
+#     for row in rows:
+#         cells = row.find_all("td")
+#         if len(cells) >= 9:  # Ensure there are enough columns
+#             stock_name = cells[1].text.strip()  # Stock name is in the second column
+#             sales_qtr = cells[8].text.strip()  # Sales Qtr is in the 9th column
+#             stock_names.append(stock_name)
+#             latest_quarter_sales.append(sales_qtr)
+
+# df = pd.DataFrame({
+#     "Stock Name": stock_names,
+#     "Latest Quarter Sales (Rs. Cr.)": latest_quarter_sales
+# })
+
+# inddf = []
+# indname = []
+# for i in tqdm(range(4,9)):
+#     industry_url = f"{sector_url}{i:08d}/"
+#     response = requests.get(industry_url)
+#     soup = bs(response.content, "html.parser")
+    
+#     stock_names = []
+#     latest_quarter_sales = []
+
+#     response = requests.get(industry_url)
+#     if response.status_code != 200:
+#         continue
+    
+#     soup = bs(response.content, "html.parser")
+    
+#     table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+#     if not table:
+#         continue
+    
+#     rows = table.find_all("tr")[1:]
+    
+#     for row in rows:
+#         cells = row.find_all("td")
+#         if len(cells) >= 9:  # Ensure there are enough columns
+#             stock_name = cells[1].text.strip()  # Stock name is in the second column
+#             sales_qtr = cells[8].text.strip()  # Sales Qtr is in the 9th column
+#             stock_names.append(stock_name)
+#             latest_quarter_sales.append(sales_qtr)
+    
+#     df = pd.DataFrame({
+#         "Stock Name": stock_names,
+#         "Latest Quarter Sales (Rs. Cr.)": latest_quarter_sales
+#     })
+#     if len(df)==0:
+#         continue
+#     inddf.append(df)
+#     indname.append(soup.title.string)
+
+
+# In[16]:
+
+
+# soup
 
 
 # In[ ]:
