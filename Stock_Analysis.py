@@ -504,12 +504,8 @@ def profitloss(content, industry):
                 values = filtered_data_df.iloc[0,:-1]
                 intvalues = [item for item in values if not isinstance(item, str)]
                 ymin = min(list(intvalues))*1.25 if min(list(intvalues))<0 else 0
-                ymax = max(list(intvalues))*1.25
-                if ymax>0:
-                    ymin=0
-                else:
-                    ymin=ymax
-                    ymax=0
+                ymax = max(list(intvalues))*1.25 if max(list(intvalues))>0 else 0
+                
                 fig_pcbar = go.Figure(data=[go.Bar(x=dfrequiredcols, y=values, name=resultoption, text=values, textposition="outside",
                                                    textfont=dict(size=14), marker=dict(color="#74a5f2"))])
                 fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
