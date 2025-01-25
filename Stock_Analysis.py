@@ -651,7 +651,7 @@ def shareholding(content, industry):
                 with shareholderscol:
                     shareholder = st.radio("Share Holder", shareholders, index=0, horizontal=True)
                 filtered_data = dfreq[dfreq["Type"]==shareholder]
-                values = filtered_data.iloc[0,:-1]
+                values = filtered_data.iloc[0,1:]
                 fig_shbar = go.Figure(data=[go.Bar(x=dfreqcols, y=values, name=shareholder, text=values, textposition="outside", textfont=dict(size=14),
                                                    marker=dict(color=color_palette[shareholders.index(shareholder)]))])
                 fig_shbar.update_layout(title=dict(text="Share Holding Pattern", x=0.5, xanchor="center", font=dict(size=22)),xaxis_title=shtenure[:-2],
