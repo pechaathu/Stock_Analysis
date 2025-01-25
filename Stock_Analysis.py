@@ -704,7 +704,7 @@ def deliveryqty(industry, stock_symbol, stock_name):
                 with imagecol2:
                     st.image(loading_gif_url, caption="Loading... Please wait.", use_column_width=True)
             delivdf = pd.DataFrame()
-            for i in range(30,0,-1):
+            for i in range(15,0,-1):
                 try:
                     date = (datetime.today()-timedelta(days=i)).strftime("%d-%m-%Y")
                     deldf = capital_market.bhav_copy_with_delivery(date)
@@ -719,7 +719,7 @@ def deliveryqty(industry, stock_symbol, stock_name):
                                       name="Total Traded Quantity"))
             figdeliv.add_trace(go.Bar(x=delivdf['Date'], y=delivdf['DELIV_QTY'], marker=dict(color="blue"), text=delivdf['DELIV_QTY'],
                                       name="Delivery Quantity"))
-            figdeliv.update_layout(title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 30 days)", x=0.5, xanchor='center'), width=200,
+            figdeliv.update_layout(title=dict(text=stock_name+" - Traded & Delivered Quantity (Last 15 days)", x=0.5, xanchor='center'), width=200,
                                    barmode='overlay', yaxis_title="Quantity count", xaxis_title=stock_name, template="plotly_white", height=550,
                                    xaxis=dict(tickmode='linear', dtick=1, tickfont=dict(size=10)))
             st.plotly_chart(figdeliv, use_container_width=True)
