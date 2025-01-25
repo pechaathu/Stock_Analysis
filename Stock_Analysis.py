@@ -503,7 +503,7 @@ def profitloss(content, industry):
                 filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
                 values = filtered_data_df.iloc[0,:-1]
                 intvalues = [item for item in values if not isinstance(item, str)]
-                ymin = min(list(intvalues))*-1.35 if min(list(intvalues))<0 else 0
+                ymin = min(list(intvalues))*1.25 if min(list(intvalues))<0 else 0
                 ymax = max(list(intvalues))*1.25
                 if ymax>0:
                     ymin=0
