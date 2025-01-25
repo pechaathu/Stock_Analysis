@@ -503,7 +503,7 @@ def profitloss(content, industry):
                 filtered_data_df = dfrequired[dfrequired["Type"]==resultoption]
                 filtered_data_df
                 dfrequiredcols
-                values = filtered_data_df.iloc[0,:-1]
+                values = filtered_data_df.iloc[0,1:]
                 values
                 intvalues = [item for item in values if not isinstance(item, str)]
                 intvalues
