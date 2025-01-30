@@ -784,7 +784,7 @@ def stock_analysis():
     balancesheet(content, industry)
     shareholding(content, industry)
     dividends(industry, stock_symbol, stock_name)
-    deliveryqty(industry, stock_symbol, stock_name)
+    # deliveryqty(industry, stock_symbol, stock_name)
 
 
 # # Index Performance page
