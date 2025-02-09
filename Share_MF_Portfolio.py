@@ -375,7 +375,7 @@ if st.session_state.page == "Salary Portfolio":
     else:
         dff = df[df['Salary Year']==salary_year].reset_index(drop=True)
         dff['Month_Year'] = dff['Month']+"<br>"+dff['Year'].astype(str)
-        tf = 15
+        tf = 14
         ta = 0
         metric_title = " this year"
     dff['Amount_str'] = dff['Amount'].astype(str).apply(inttostr)
@@ -407,20 +407,6 @@ if st.session_state.page == "Salary Portfolio":
 
 
 # # Testing Codes
-
-# In[14]:
-
-
-df = pd.read_excel('Salary.xlsx')
-df['Month_Year'] = df['Month']+" "+df['Year'].astype(str)
-
-
-# In[15]:
-
-
-a = pd.DataFrame(df.groupby(['Salary Year','Income Type'])['Amount'].sum()).reset_index()
-a
-
 
 # In[ ]:
 
