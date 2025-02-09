@@ -51,13 +51,19 @@ def page_navigation():
                 border-radius: 0.1px; margin: 0 0.2px; cursor:pointer; text-align:center; text-decoration: none; transition: background-color 0.3s ease;
                 }.menu-button.selected {background-color: #0056b3;}.menu-button:hover {background-color: #0056b3;}</style>""", unsafe_allow_html=True)
     st.markdown('<div class="menu-container">', unsafe_allow_html=True)
-    colmenu1, colmenu2, colmenu3, colmenu4 = st.columns([1,1,1,1])
+    colmenu1, colmenu2, colmenu3, colmenu4, colmenu5, colmenu6 = st.columns([1,1,1,1,1,1])
     with colmenu2:
         if st.button("Stock Analysis", key="stockanalysis", use_container_width=True):
             st.session_state.page = "Stock Analysis"
     with colmenu3:
         if st.button("Index Performance", key="indexperformance", use_container_width=True):
             st.session_state.page = "Index Performance"
+    with colmenu4:
+        if st.button("FII DII Activity", key="fiidiiactivity", use_container_width=True):
+            st.session_state.page = "FII DII Activity"
+    with colmenu5:
+        if st.button("Union Budget", key="unionbudget", use_container_width=True):
+            st.session_state.page = "Union Budget"
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -127,7 +133,7 @@ def webscrap(webcontent, label):
 
 # # Stock Analysis Page
 
-# ## Stock Filters & Price Chart
+# ### Stock Filters & Price Chart
 
 # In[ ]:
 
@@ -789,6 +795,8 @@ def stock_analysis():
 
 # # Index Performance page
 
+# ### Sector data extraction
+
 # In[ ]:
 
 
@@ -804,7 +812,7 @@ def sector_extract(sector_url):
     
     stock_names = []
     latest_quarter_sales = []
-        
+    
     for page in range(1, total_pages+1):
         url = f"{sector_url}?page={page}"
         response = requests.get(url)
@@ -814,6 +822,7 @@ def sector_extract(sector_url):
         table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
         if not table:
             continue
+        st.write(table)
         rows = table.find_all("tr")[1:]
         for row in rows:
             cells = row.find_all("td")
@@ -824,13 +833,17 @@ def sector_extract(sector_url):
                 latest_quarter_sales.append(sales_qtr)
     
     df = pd.DataFrame({"Stock Name": stock_names, "Sales": latest_quarter_sales})
-    df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce').fillna(0).astype('float')
+    df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce')
+    df = df.dropna(subset=['Sales'], axis=0)
+    df['Sales'] = df['Sales'].astype('float')
     df['Percentage'] = 100*df['Sales']/df['Sales'].sum()
     df['Percentage'] = df['Percentage'].round(1)
     df = df.sort_values(by=['Percentage'], ascending=False).reset_index(drop=True)
     df['Cumulative_Percentage'] = df['Percentage'].cumsum()
     return df    
 
+
+# ### Industry data extraction
 
 # In[ ]:
 
@@ -871,7 +884,9 @@ def industry_extract(sector_url, url_range):
                     latest_quarter_sales.append(sales_qtr)
         
         df = pd.DataFrame({"Stock Name": stock_names, "Sales": latest_quarter_sales})
-        df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce').fillna(0).astype('float')
+        df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce')
+        df = df.dropna(subset=['Sales'], axis=0)
+        df['Sales'] = df['Sales'].astype('float')
         df['Percentage'] = 100*df['Sales']/df['Sales'].sum()
         df['Percentage'] = df['Percentage'].round(1)
         df = df.sort_values(by=['Percentage'], ascending=False).reset_index(drop=True)
@@ -882,11 +897,13 @@ def industry_extract(sector_url, url_range):
     return inddf, indname
 
 
+# ### Market Share Graphs
+
 # In[ ]:
 
 
 def market_share(sector_urls, industry_urls):
-    st.markdown("<br>Current Market Share", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     sectorcol1, sectorcol2, sectorcol3 = st.columns([3,1,3])
     with sectorcol1:
         sectorname = st.selectbox("Select the Sector:", list(sector_urls.keys()), index=0)
@@ -914,7 +931,7 @@ def market_share(sector_urls, industry_urls):
 
     with sectorcol2:
         st.write("Sector Break down")
-        sector_breakdown = st.toggle("On", value=True)
+        sector_breakdown = st.toggle("On", value=False)
 
     if sector_breakdown:
         industry_url_range = industry_urls[sectorname]
@@ -937,7 +954,7 @@ def market_share(sector_urls, industry_urls):
         industry_market_share_df_list[indindex]['Stock Name'] = np.where(
                                                         industry_market_share_df_list[indindex]['Cumulative_Percentage']>desired_binsize, "Others",
                                                         industry_market_share_df_list[indindex]['Stock Name'])
-
+        
         with sectorcol6:
             fig_market_share2 = go.Figure(data=[go.Pie(labels=industry_market_share_df_list[indindex]['Stock Name'],
                                                        values=industry_market_share_df_list[indindex]['Percentage'], hole=0.5,
@@ -946,6 +963,8 @@ def market_share(sector_urls, industry_urls):
                                            legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), height=450, margin=dict(t=40,b=10,l=30,r=30))
             st.plotly_chart(fig_market_share2, use_container_width=True)
 
+
+# ### Index Performance Graph
 
 # In[ ]:
 
@@ -1042,7 +1061,210 @@ def index_performance():
                    'Metal':f'{web2}00000057/', 'Pharmaceutical':f'{web2}00000046/', 'Realty':f'{web2}00000051/'}
     industry_urls = {'Automobile':(5,9), 'Banking':(11,12), 'Energy':(76,76), 'FMCG':(53,54), 'IT':(26,30), 'Infrastructure':(45,45), 'Media':(47,47),
                      'Mining & Mineral':(59,59), 'Metal':(84,86), 'Pharmaceutical':(70,73), 'Realty':(31,31)}
-    market_share(secotr_urls, industry_urls)
+    # market_share(secotr_urls, industry_urls)
+
+
+# # FII DII Activity
+
+# In[ ]:
+
+
+def fii_dii_activity():
+    st.markdown("<br>", unsafe_allow_html=True)
+    url = 'https://www.moneycontrol.com/stocks/marketstats/fii_dii_activity/index.php'
+    response = requests.get(url)
+    if response.status_code == 200:
+        page_content = response.content
+        soup = bs(page_content, 'html.parser')
+        table = soup.find("table", class_="mctable1 tble1")
+        thismonth = [th.get_text(strip=True) for th in table.find_all("th") if th.get_text(strip=True)]
+        thismonth = thismonth[-6:]
+        data = []
+        for row in table.find_all("tr")[2:]:
+            cols = row.find_all("td")
+            cols = [col.get_text(strip=True) for col in cols]
+            if cols:
+                data.append(cols)
+        fii_data = [[row[0][:11], row[1], row[2], row[3]] for row in data]
+        dii_data = [[row[0][:11], row[4], row[5], row[6]] for row in data]
+        
+        headers = ['Date', 'Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+        fii_df = pd.DataFrame(fii_data, columns=headers)
+        fii_df['Date'] = pd.to_datetime(fii_df['Date'], format="%d-%b-%Y").dt.date
+        fii_df[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']] = fii_df[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+                                                                            ].replace(',', '', regex=True).astype(float)
+        fii_df = fii_df.sort_index(ascending=False).reset_index(drop=True)
+        
+        dii_df = pd.DataFrame(dii_data, columns=headers)
+        dii_df['Date'] = pd.to_datetime(dii_df['Date'], format="%d-%b-%Y").dt.date
+        dii_df[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']] = dii_df[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+                                                                            ].replace(',', '', regex=True).astype(float)
+        dii_df = dii_df.sort_index(ascending=False).reset_index(drop=True)
+
+        fiicol, diicol = st.columns([1,1])
+        curmon = datetime.today().strftime('%b %Y')
+        with fiicol:
+            st.markdown("""<style>.title {{text-align: center; font-size: 28px; font-weight: bold;}}</style><div class="title">FII Activity - in {}</div>""".format(curmon), unsafe_allow_html=True)
+            desiredcol1 = st.radio("", headers[1:], horizontal=True, index=2, key='fii_col')
+            if desiredcol1=="Net Cash Flow":
+                fii_colors = ["red" if val < 0 else "green" for val in fii_df[desiredcol1]]
+            else:
+                fii_colors = "#74a5f2"
+            values = fii_df[desiredcol1].values.tolist()
+            ymin = min(list(values))*1.35 if min(list(values))<0 else 0
+            ymax = max(list(values))*1.35 if max(list(values))>0 else 0
+            fig_fii = go.Figure(data=[go.Bar(x=fii_df['Date'], y=fii_df[desiredcol1], text=fii_df[desiredcol1], textposition="outside",
+                                             textfont=dict(size=14), marker=dict(color=fii_colors))])
+            fig_fii.update_layout(yaxis_title="₹ in Cr.", yaxis=dict(range=[ymin,ymax]), xaxis=dict(tickfont=dict(size=9.5), tickangle=0),
+                                  height=320, width=750, margin=dict(t=40,b=10,l=10,r=25))
+            st.plotly_chart(fig_fii, use_container_width=True)
+
+        with diicol:
+            st.markdown("""<style>.title {{text-align: center; font-size: 28px; font-weight: bold;}}</style><div class="title">DII Activity - in {}</div>""".format(curmon), unsafe_allow_html=True)
+            desiredcol2 = st.radio("", headers[1:], horizontal=True, index=2, key='dii_col')
+            if desiredcol2=="Net Cash Flow":
+                dii_colors = ["red" if val < 0 else "green" for val in dii_df[desiredcol2]]
+            else:
+                dii_colors = "#74a5f2"
+            values = dii_df[desiredcol2].values.tolist()
+            ymin = min(list(values))*1.35 if min(list(values))<0 else 0
+            ymax = max(list(values))*1.35 if max(list(values))>0 else 0
+            fig_dii = go.Figure(data=[go.Bar(x=dii_df['Date'], y=dii_df[desiredcol2], text=dii_df[desiredcol2], textposition="outside",
+                                             textfont=dict(size=14), marker=dict(color=dii_colors))])
+            fig_dii.update_layout(yaxis_title="₹ in Cr.", yaxis=dict(range=[ymin,ymax]),xaxis=dict(tickfont=dict(size=9.5), tickangle=0),
+                                  height=320, width=750, margin=dict(t=40,b=10,l=25,r=10))
+            st.plotly_chart(fig_dii, use_container_width=True)
+
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        section = soup.find("section", class_="prevfidi_sec")
+        tables = section.find_all("table")
+        table = tables[1]
+        rows = table.find("tbody").find_all("tr")
+        fii_data, dii_data = [], []
+        for row in rows:
+            cols = row.find_all("td")
+            month = cols[0].get_text(strip=True).split(" ")[0] + " " + cols[0].get_text(strip=True).split(" ")[-1]
+            year = cols[0].get_text(strip=True).split(" ")[-1]
+            fii_data.append([month, year, cols[1].get_text(strip=True), cols[2].get_text(strip=True), cols[3].get_text(strip=True)])
+            dii_data.append([month, year, cols[4].get_text(strip=True), cols[5].get_text(strip=True), cols[6].get_text(strip=True)])
+            
+        headers = ['Month', 'Year', 'Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+        
+        fii_dff = pd.DataFrame(fii_data, columns=headers)
+        fii_dff[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']] = fii_dff[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+                                                                            ].replace(',', '', regex=True).astype(float)
+        
+        dii_dff = pd.DataFrame(dii_data, columns=headers)
+        dii_dff[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']] = dii_dff[['Gross Purchase', 'Gross Sales', 'Net Cash Flow']
+                                                                            ].replace(',', '', regex=True).astype(float)
+
+
+        selected_duration = st.slider("Last few months:", min_value=0, max_value=len(fii_dff), value=12)
+        fii_dff2 = fii_dff[:selected_duration]
+        fii_dff2 = fii_dff2.sort_index(ascending=False).reset_index(drop=True)
+        dii_dff2 = dii_dff[:selected_duration]
+        dii_dff2 = dii_dff2.sort_index(ascending=False).reset_index(drop=True)
+
+        
+        fiicol2, diicol2 = st.columns([1,1])
+        with fiicol2:
+            st.markdown("""<style>.title {{text-align: center; font-size: 28px; font-weight: bold;}}</style><div class="title">FII Activity - for the Last {} months</div>""".format(selected_duration), unsafe_allow_html=True)
+            desiredcol3 = st.radio("", headers[2:], horizontal=True, index=2, key='fii_col2')
+            if desiredcol3=="Net Cash Flow":
+                fii_colors = ["red" if val < 0 else "green" for val in fii_dff2[desiredcol3]]
+            else:
+                fii_colors = "#74a5f2"
+            values = fii_dff2[desiredcol3].values.tolist()
+            ymin = min(list(values))*1.35 if min(list(values))<0 else 0
+            ymax = max(list(values))*1.35 if max(list(values))>0 else 0
+            if selected_duration<16:
+                fii_dff2['Month'] = fii_dff2['Month'].replace(' ', '<br>', regex=True)
+            fig_fii2 = go.Figure(data=[go.Bar(x=fii_dff2['Month'], y=fii_dff2[desiredcol3], text=fii_dff2[desiredcol3], textposition="outside",
+                                             textfont=dict(size=14), marker=dict(color=fii_colors))])
+            fig_fii2.update_layout(yaxis_title="₹ in Cr.", yaxis=dict(range=[ymin,ymax]), xaxis=dict(tickfont=dict(size=9.5), tickangle=-90),
+                                  height=320, width=750, margin=dict(t=40,b=10,l=10,r=25))
+            st.plotly_chart(fig_fii2, use_container_width=True)
+
+        with diicol2:
+            st.markdown("""<style>.title {{text-align: center; font-size: 28px; font-weight: bold;}}</style><div class="title">DII Activity - for the Last {} months</div>""".format(selected_duration), unsafe_allow_html=True)
+            desiredcol4 = st.radio("", headers[2:], horizontal=True, index=2, key='dii_col2')
+            if desiredcol4=="Net Cash Flow":
+                dii_colors = ["red" if val < 0 else "green" for val in dii_dff2[desiredcol4]]
+            else:
+                dii_colors = "#74a5f2"
+            values = dii_dff2[desiredcol4].values.tolist()
+            ymin = min(list(values))*1.35 if min(list(values))<0 else 0
+            ymax = max(list(values))*1.35 if max(list(values))>0 else 0
+            if selected_duration<16:
+                dii_dff2['Month'] = dii_dff2['Month'].replace(' ', '<br>', regex=True)
+            fig_dii2 = go.Figure(data=[go.Bar(x=dii_dff2['Month'], y=dii_dff2[desiredcol4], text=dii_dff2[desiredcol4], textposition="outside",
+                                             textfont=dict(size=14), marker=dict(color=dii_colors))])
+            fig_dii2.update_layout(yaxis_title="₹ in Cr.", yaxis=dict(range=[ymin,ymax]),xaxis=dict(tickfont=dict(size=9.5), tickangle=-90),
+                                  height=320, width=750, margin=dict(t=40,b=10,l=25,r=10))
+            st.plotly_chart(fig_dii2, use_container_width=True)
+
+
+# # Union Budget
+
+# In[ ]:
+
+
+def inttostr(x):
+    if len(x)==5:
+        x = x[:2]+","+x[-3:]
+    elif len(x)==6:
+        x = x[:1]+","+x[1:3]+","+x[-3:]
+    elif len(x)==7:
+        x = x[:2]+","+x[2:4]+","+x[-3:]
+    return "₹"+x
+
+
+# In[ ]:
+
+
+def union_budget():
+    data = {"Expenditure" : ["Interest", "Transport", "Defence", "Major<br>Subsidies", "Pension", "Rural<br>Development", "Home<br>Affairs",
+                             "Tax<br>Administration", "Agriculture", "Education", "Health", "Urban<br>Development", "IT and<br>Telecom", "Energy",
+                             "Commerce<br>& Industry", "Finance", "Social<br>Welfare", "Scientific<br>Departments", "External<br>Affairs",
+                             "North East<br>Development", "Others"],
+            "Amount" : [1276338, 548649, 491732, 383407, 276618, 266817, 233211, 186632, 171437, 128650, 98311, 96777, 95298, 81174, 65553, 62924,
+                        60052, 55679, 20517, 5915, 482653]}
+    df = pd.DataFrame(data)
+    df['Amount_str'] = df['Amount'].astype(str).apply(inttostr)
+    df['Percentage'] = (100*df['Amount']/df['Amount'].sum()).round(2)
+    st.markdown("<br>", unsafe_allow_html=True)
+    fig_bar = go.Figure(data=[go.Bar(x=df["Expenditure"], y=df["Amount"], marker=dict(color=(color_palette*2)+['#d9ccde']), text=df["Amount_str"],
+                                     hovertemplate="Category: %{x}<br>Amount: ₹%{text} Cr.<br>Percentage: %{customdata}", customdata=df["Percentage"],
+                                     textposition="outside", textfont=dict(size=12))])
+    fig_bar.update_layout(title=dict(text="Government's Budget Allocation for 2025-26", x=0.5, xanchor="center", font=dict(size=22)),
+                          xaxis=dict(title="Category",tickangle=-90,tickfont=dict(size=13)), yaxis=dict(title="₹ in Cr.",tickfont=dict(size=1)),
+                          width=650, height=500, margin=dict(l=5,r=5,t=40,b=5))
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+    indata = {"Category" : ["Borrowings &<br>Other Liabilities", "Income Tax", "GST &<br>Other Tax", "Corporation<br>Tax", "Non Tax<br>Receipts",
+                            "Excise", "Customs", "Non debt<br>Capital"],
+              "Amount" : [24, 22, 18, 17, 9, 5, 4, 1]}
+    outdata = {"Category" : ["State<br>Taxes<br>Duties", "Interest", "Central<br>Sector<br>Scheme", "Defence", "Finance<br>Commission",
+                             "Centrally<br>Sponsored<br>Scheme", "Other<br>Expenditure", "Subsidies", "Pension"],
+               "Amount" : [22, 20, 16, 8, 8, 8, 8, 6, 4]}
+    rupcfdf = pd.DataFrame(indata)
+    rupgtdf = pd.DataFrame(outdata)
+    rupeecol1, rupeecol2 = st.columns([1,1])
+    with rupeecol1:
+        fig_rupcf = go.Figure(data=[go.Pie(labels=rupcfdf['Category'], values=rupcfdf['Amount'], hole=0.5, direction='clockwise', sort=False,
+                              textfont=dict(size=12.5), textinfo='label+percent', rotation=-45)])
+        fig_rupcf.update_layout(title=dict(text="Rupee comes from", x=0.5, xanchor="center", font=dict(size=24)),
+                                legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=420,
+                                margin=dict(t=40,b=10,l=10,r=10))
+        st.plotly_chart(fig_rupcf, use_container_width=True)
+    with rupeecol2:
+        fig_rupgt = go.Figure(data=[go.Pie(labels=rupgtdf['Category'], values=rupgtdf['Amount'], hole=0.5, direction='clockwise', sort=False,
+                              textfont=dict(size=12.5), textinfo='label+percent', rotation=-45)])
+        fig_rupgt.update_layout(title=dict(text="Rupee goes to", x=0.5, xanchor="center", font=dict(size=24)),
+                                legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"), showlegend=False, width=320, height=420,
+                                margin=dict(t=40,b=10,l=10,r=10))
+        st.plotly_chart(fig_rupgt, use_container_width=True)
 
 
 # # Main Function
@@ -1060,6 +1282,12 @@ def main_dashboard():
 
     elif st.session_state.page == "Index Performance":
         index_performance()
+
+    elif st.session_state.page == "FII DII Activity":
+        fii_dii_activity()
+
+    elif st.session_state.page == "Union Budget":
+        union_budget()
 
 
 # ## Login Page
@@ -1146,6 +1374,10 @@ def main():
         main_dashboard()
     elif st.session_state.page == "Index Performance":
         main_dashboard()
+    elif st.session_state.page == "FII DII Activity":
+        main_dashboard()
+    elif st.session_state.page == "Union Budget":
+        main_dashboard()
 
 
 # In[ ]:
@@ -1168,99 +1400,6 @@ if __name__ == "__main__":
 
 
 # # Testing Codes
-
-# In[15]:
-
-
-# from tqdm.notebook import tqdm
-# sector_url = "https://www.screener.in/company/compare/00000005/"
-# base_url = sector_url
-
-# response = requests.get(sector_url)
-# soup = bs(response.content, "html.parser")
-
-# pagination = soup.find("div", class_="pagination")
-# if not pagination:
-#     total_pages = 1
-# else:
-#     page_links = pagination.find_all("a", class_="ink-900")
-#     total_pages = int(page_links[-1].text.strip()) if page_links else 1
-
-# stock_names = []
-# latest_quarter_sales = []
-
-# for page in range(1, total_pages + 1):
-#     url = f"{base_url}?page={page}"
-#     response = requests.get(url)
-#     if response.status_code != 200:
-#         continue
-    
-#     soup = bs(response.content, "html.parser")
-    
-#     table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
-#     if not table:
-#         continue
-    
-#     rows = table.find_all("tr")[1:]
-    
-#     for row in rows:
-#         cells = row.find_all("td")
-#         if len(cells) >= 9:  # Ensure there are enough columns
-#             stock_name = cells[1].text.strip()  # Stock name is in the second column
-#             sales_qtr = cells[8].text.strip()  # Sales Qtr is in the 9th column
-#             stock_names.append(stock_name)
-#             latest_quarter_sales.append(sales_qtr)
-
-# df = pd.DataFrame({
-#     "Stock Name": stock_names,
-#     "Latest Quarter Sales (Rs. Cr.)": latest_quarter_sales
-# })
-
-# inddf = []
-# indname = []
-# for i in tqdm(range(4,9)):
-#     industry_url = f"{sector_url}{i:08d}/"
-#     response = requests.get(industry_url)
-#     soup = bs(response.content, "html.parser")
-    
-#     stock_names = []
-#     latest_quarter_sales = []
-
-#     response = requests.get(industry_url)
-#     if response.status_code != 200:
-#         continue
-    
-#     soup = bs(response.content, "html.parser")
-    
-#     table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
-#     if not table:
-#         continue
-    
-#     rows = table.find_all("tr")[1:]
-    
-#     for row in rows:
-#         cells = row.find_all("td")
-#         if len(cells) >= 9:  # Ensure there are enough columns
-#             stock_name = cells[1].text.strip()  # Stock name is in the second column
-#             sales_qtr = cells[8].text.strip()  # Sales Qtr is in the 9th column
-#             stock_names.append(stock_name)
-#             latest_quarter_sales.append(sales_qtr)
-    
-#     df = pd.DataFrame({
-#         "Stock Name": stock_names,
-#         "Latest Quarter Sales (Rs. Cr.)": latest_quarter_sales
-#     })
-#     if len(df)==0:
-#         continue
-#     inddf.append(df)
-#     indname.append(soup.title.string)
-
-
-# In[16]:
-
-
-# soup
-
 
 # In[ ]:
 
