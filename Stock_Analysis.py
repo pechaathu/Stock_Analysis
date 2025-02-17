@@ -3,10 +3,11 @@
 
 # # Importing Libraries
 
-# In[2]:
+# In[1]:
 
 
 import io
+import re
 import sys
 import time
 import smtplib
@@ -51,7 +52,7 @@ def page_navigation():
                 border-radius: 0.1px; margin: 0 0.2px; cursor:pointer; text-align:center; text-decoration: none; transition: background-color 0.3s ease;
                 }.menu-button.selected {background-color: #0056b3;}.menu-button:hover {background-color: #0056b3;}</style>""", unsafe_allow_html=True)
     st.markdown('<div class="menu-container">', unsafe_allow_html=True)
-    colmenu1, colmenu2, colmenu3, colmenu4, colmenu5, colmenu6 = st.columns([1,1,1,1,1,1])
+    colmenu1, colmenu2, colmenu3, colmenu4, colmenu5, colmenu6, colmenu7 = st.columns([1,1,1,1,1,1,1])
     with colmenu2:
         if st.button("Stock Analysis", key="stockanalysis", use_container_width=True):
             st.session_state.page = "Stock Analysis"
@@ -59,9 +60,12 @@ def page_navigation():
         if st.button("Index Performance", key="indexperformance", use_container_width=True):
             st.session_state.page = "Index Performance"
     with colmenu4:
+        if st.button("Strategy Indices", key="strategyindices", use_container_width=True):
+            st.session_state.page = "Strategy Indices"
+    with colmenu5:
         if st.button("FII DII Activity", key="fiidiiactivity", use_container_width=True):
             st.session_state.page = "FII DII Activity"
-    with colmenu5:
+    with colmenu6:
         if st.button("Union Budget", key="unionbudget", use_container_width=True):
             st.session_state.page = "Union Budget"
     st.markdown('</div>', unsafe_allow_html=True)
@@ -129,6 +133,76 @@ def webscrap(webcontent, label):
         if value_tag:
             value_string = value_tag.text.strip()
             return value_string
+
+
+# # Login Page
+
+# In[ ]:
+
+
+def load_valid_emails():
+    try:
+        df = pd.read_excel("AccessList.xlsx")
+        return set(df['MailID'].str.strip().str.lower())
+    except Exception as e:
+        st.error(f"Error loading email list: {e}")
+        return set()
+
+
+# In[ ]:
+
+
+def mail(recipient_email, otpnum):
+    msg = MIMEMultipart()
+    msg['From'] = "stockanalysiswithesh@gmail.com"
+    msg['To'] = recipient_email
+    msg['Subject'] = "OTP for Logging into Stock Analysis dashboard"
+
+    msg.attach(MIMEText(f'OTP: {otpnum}', 'plain'))
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login("stockanalysiswithesh@gmail.com", "zseo rzfw zgwr aduv")
+            text = msg.as_string()
+            server.sendmail("stockanalysiswithesh@gmail.com", recipient_email, text)
+    except Exception as e:
+        st.write(f"Error: {e}")
+
+
+# In[ ]:
+
+
+def login_page(valid_emails):
+    st.markdown("""<style>.title {text-align:center; font-size:34px; font-weight:bold;}</style><div class="title">Stock Analysis dashboard<br></div>""",
+                unsafe_allow_html=True)
+    logincol1, logincol2, logincol3 = st.columns([1,1,1])
+    logincol10, logincol11, logincol12 = st.columns([1.15,0.35,1])
+    logincol4, logincol5, logincol6 = st.columns([1,1,1])
+    logincol7, logincol8, logincol9 = st.columns([1.2,0.3,1])
+    with logincol2:
+        email = st.text_input("Email ID", placeholder="Enter your email")
+    with logincol11:
+        if st.button("Generate OTP"):
+            if email.strip().lower() in valid_emails:
+                otp = np.random.randint(100000, 1000000)
+                st.session_state.generated_otp = otp
+                st.session_state.email = email
+                mail(email, otp)
+            else:
+                st.error("You don't have access to the dashboard. Please contact Admin.")
+
+    if "generated_otp" in st.session_state:
+        with logincol5:
+            otpentry = st.text_input("OTP", placeholder="Enter the OTP received in mail")
+        with logincol8:
+            if st.button("Login"):
+                if otpentry == str(st.session_state.generated_otp):
+                    st.success("Login successful!")
+                    time.sleep(3)
+                    st.session_state.page = "Stock Analysis"
+                    st.experimental_rerun()
+                else:
+                    st.error("Invalid OTP!...")
 
 
 # # Stock Analysis Page
@@ -213,8 +287,48 @@ def prologue(companies):
         else:
             st.text_input("End Date", (stock_data['Date'].min()).to_pydatetime().strftime("%d-%b-%Y"), disabled=True)
     
-    stock_data = stock_data[stock_data['Date']>=start_date].reset_index(drop=True)
+    Alltimehigh = stock_data['High_'+stock_symbol].max()
+    varalltimehigh = np.round(100*(stock_data['Close_'+stock_symbol][len(stock_data)-1]-Alltimehigh)/Alltimehigh,2)
+    High52week = stock_data[stock_data['Date']>=((stock_data['Date'].max()).to_pydatetime()-timedelta(days=365))]['High_'+stock_symbol].max()
+    varhigh52week = np.round(100*(stock_data['Close_'+stock_symbol][len(stock_data)-1]-High52week)/High52week,2)
+    High52weekindex = stock_data[(stock_data['Date']>=((stock_data['Date'].max()).to_pydatetime()-timedelta(days=365)))&
+                                 (stock_data['High_'+stock_symbol]==High52week)].index.tolist()[0]
+    stock_data_sub = stock_data[High52weekindex:].copy().reset_index(drop=True)
+    Low52week = stock_data_sub[stock_data_sub['Date']>=((stock_data_sub['Date'].max()).to_pydatetime()-timedelta(days=365))]['Low_'+stock_symbol].min()
+    varlow52week = np.round(100*(Low52week-High52week)/High52week,2)
     
+    stock_data = stock_data[stock_data['Date']>=start_date].reset_index(drop=True)
+
+    absolute_returns = np.round(100*(stock_data['Close_'+stock_symbol][len(stock_data)-1]-stock_data['Close_'+stock_symbol][0])/stock_data['Close_'+stock_symbol][0],2)
+    if absolute_returns>0:
+        fontcolor = 'green'
+    elif absolute_returns<0:
+        fontcolor = 'red'
+    else:
+        fontcolor = 'white'
+    if absolute_returns>0:
+        absolute_returns = "+"+str(absolute_returns)+"%" 
+    else:
+        absolute_returns = str(absolute_returns)+"%"
+
+    if varalltimehigh>=0:
+        fontcolor2 = 'green'
+    else:
+        fontcolor2 = 'red'
+    varalltimehigh = str(varalltimehigh)+"%"
+
+    if varhigh52week>=0:
+        fontcolor3 = 'green'
+    else:
+        fontcolor3 = 'red'
+    varhigh52week = str(varhigh52week)+"%"
+
+    if varlow52week>=0:
+        fontcolor3 = 'green'
+    else:
+        fontcolor3 = 'red'
+    varlow52week = str(varlow52week)+"%"
+        
     if comparison==True:
         bm_index_symbol = companies['Index'][selected_index]
         bm_data = yf.download(bm_index_symbol)
@@ -251,7 +365,7 @@ def prologue(companies):
     
         with col7:
             chart_type = st.radio("Chart type:", ["Line","Candle"], index=0, horizontal=True)
-    
+        
         if chart_type=="Line":
             if stock_data['Close_'+stock_symbol][0] <= stock_data['Close_'+stock_symbol][len(stock_data)-1]:
                 chart_color = 'green'
@@ -292,6 +406,21 @@ def prologue(companies):
                                      template="plotly_white", xaxis=dict(showgrid=True,rangeslider=dict(visible=False)), yaxis=dict(showgrid=True),
                                      height=500)
             st.plotly_chart(fig_candle, use_container_width=True)
+
+
+    col8, col9, col10, col11 = st.columns([1,1,1,1])
+    with col8:
+        st.markdown("""<p style="text-align: center; font-size: 14px;">Absolute Returns</p>""", unsafe_allow_html=True)
+        st.markdown("""<p style="text-align: center; font-size: 25px; font-weight: bold; color: {fontcolor};">{absolute_returns}</p>""".format(fontcolor=fontcolor, absolute_returns=absolute_returns), unsafe_allow_html=True)
+    with col9:
+        st.markdown("""<p style="text-align: center; font-size: 14px;">Current status from its All time High</p>""", unsafe_allow_html=True)
+        st.markdown("""<p style="text-align: center; font-size: 25px; font-weight: bold; color: {fontcolor2};">{varalltimehigh}</p>""".format(fontcolor2=fontcolor2, varalltimehigh=varalltimehigh), unsafe_allow_html=True)
+    with col10:
+        st.markdown("""<p style="text-align: center; font-size: 14px;">Current status from its 52 week High</p>""", unsafe_allow_html=True)
+        st.markdown("""<p style="text-align: center; font-size: 25px; font-weight: bold; color: {fontcolor3};">{varhigh52week}</p>""".format(fontcolor3=fontcolor3, varhigh52week=varhigh52week), unsafe_allow_html=True)
+    with col11:
+        st.markdown("""<p style="text-align: center; font-size: 14px;">Total Fall from its 52 week High</p>""", unsafe_allow_html=True)
+        st.markdown("""<p style="text-align: center; font-size: 25px; font-weight: bold; color: {fontcolor4};">{varlow52week}</p>""".format(fontcolor4='red', varlow52week=varlow52week), unsafe_allow_html=True)
     
     return stock_name, stock_symbol, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month
 
@@ -313,53 +442,54 @@ def getcontents(stockurls, stock_name):
 # In[ ]:
 
 
-def basicinfo(content, alltimehigh, alltimelow, high52week, low52week, high3month, low3month):
-    capital = webscrap(content,'Market Cap')
-    capnum = int(''.join(capital.split(',')))
-    stockcmp = webscrap(content,'Current Price')
-    stockcmp = ''.join(stockcmp.split(',')) if stockcmp is not None else stockcmp
-    stockbv = webscrap(content,'Book Value')
-    stockbv = ''.join(stockbv.split(',')) if stockbv is not None else stockbv
-    stockpe = webscrap(content,'Stock P/E')
-    stockpe = stockpe if stockpe is not None else webscrap(content,'P/E')
-    stockpb = webscrap(content,'Price to Book value')
-    stockpb = stockpb if stockpb is not None else webscrap(content,'Price to book value')
-    stockpb = stockpb if stockpb is not None else (
-                        np.round(float(stockcmp)/float(stockbv), 2) if stockbv is not None and stockcmp != '' and stockbv != '' else None)
-    stockroe = webscrap(content,'ROE')+"%" if webscrap(content,'ROE') is not None else webscrap(content,'ROE')
-    stockroce = webscrap(content,'ROCE')+"%" if webscrap(content,'ROCE') is not None else webscrap(content,'ROCE')
-    stockdivy = webscrap(content,'Dividend Yield')+"%" if webscrap(content,'Dividend Yield') is not None else webscrap(content,'Dividend Yield')
-    
-    scrapcol1, scrapcol2, scrapcol3, scrapcol4, scrapcol5, scrapcol6, scrapcol7, scrapcol8 = st.columns([0.8,1,0.6,0.6,0.6,0.65,0.65,0.1])
-    scrapcol9, scrapcol10, scrapcol11, scrapcol12, scrapcol13, scrapcol14 = st.columns([1,1.6,1,1.6,1,1.25])
-    with scrapcol1:
-        st.metric("Market Segment",
-        "Mega Cap" if capnum>1000000 else "Large Cap" if capnum>20000 else "Mid Cap" if capnum>5000 else "Small Cap" if capnum>1000 else "Micro Cap")
-    with scrapcol2:
-        st.metric("Market Cap", capital+" Cr")
-    with scrapcol3:
-        st.metric("P/E ratio", stockpe)
-    with scrapcol4:
-        st.metric("P/B ratio", stockpb)
-    with scrapcol5:
-        st.metric("ROE (%)", stockroe)
-    with scrapcol6:
-        st.metric("ROCE (%)", stockroce)
-    with scrapcol7:
-        st.metric("Div. Yield (%)", stockdivy)
-    with scrapcol9:
-        st.metric("All time High", "₹"+str(alltimehigh))
-    with scrapcol10:
-        st.metric("All time Low", "₹"+str(alltimelow))
-    with scrapcol11:
-        st.metric("52 Week High", "₹"+str(high52week))
-    with scrapcol12:
-        st.metric("52 Week Low", "₹"+str(low52week))
-    with scrapcol13:
-        st.metric("3 Month High", "₹"+str(high3month))
-    with scrapcol14:
-        st.metric("3 Month Low", "₹"+str(low3month))
-    st.markdown("<br>", unsafe_allow_html=True)
+def basicinfo(content, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month):
+    if industry != "Index":
+        capital = webscrap(content,'Market Cap')
+        capnum = int(''.join(capital.split(',')))
+        stockcmp = webscrap(content,'Current Price')
+        stockcmp = ''.join(stockcmp.split(',')) if stockcmp is not None else stockcmp
+        stockbv = webscrap(content,'Book Value')
+        stockbv = ''.join(stockbv.split(',')) if stockbv is not None else stockbv
+        stockpe = webscrap(content,'Stock P/E')
+        stockpe = stockpe if stockpe is not None else webscrap(content,'P/E')
+        stockpb = webscrap(content,'Price to Book value')
+        stockpb = stockpb if stockpb is not None else webscrap(content,'Price to book value')
+        stockpb = stockpb if stockpb is not None else (
+                            np.round(float(stockcmp)/float(stockbv), 2) if stockbv is not None and stockcmp != '' and stockbv != '' else None)
+        stockroe = webscrap(content,'ROE')+"%" if webscrap(content,'ROE') is not None else webscrap(content,'ROE')
+        stockroce = webscrap(content,'ROCE')+"%" if webscrap(content,'ROCE') is not None else webscrap(content,'ROCE')
+        stockdivy = webscrap(content,'Dividend Yield')+"%" if webscrap(content,'Dividend Yield') is not None else webscrap(content,'Dividend Yield')
+        
+        scrapcol1, scrapcol2, scrapcol3, scrapcol4, scrapcol5, scrapcol6, scrapcol7, scrapcol8 = st.columns([0.8,1,0.6,0.6,0.6,0.65,0.65,0.1])
+        scrapcol9, scrapcol10, scrapcol11, scrapcol12, scrapcol13, scrapcol14 = st.columns([1,1.6,1,1.6,1,1.25])
+        with scrapcol1:
+            st.metric("Market Segment",
+            "Mega Cap" if capnum>1000000 else "Large Cap" if capnum>20000 else "Mid Cap" if capnum>5000 else "Small Cap" if capnum>1000 else "Micro Cap")
+        with scrapcol2:
+            st.metric("Market Cap", capital+" Cr")
+        with scrapcol3:
+            st.metric("P/E ratio", stockpe)
+        with scrapcol4:
+            st.metric("P/B ratio", stockpb)
+        with scrapcol5:
+            st.metric("ROE (%)", stockroe)
+        with scrapcol6:
+            st.metric("ROCE (%)", stockroce)
+        with scrapcol7:
+            st.metric("Div. Yield (%)", stockdivy)
+        with scrapcol9:
+            st.metric("All time High", "₹"+str(alltimehigh))
+        with scrapcol10:
+            st.metric("All time Low", "₹"+str(alltimelow))
+        with scrapcol11:
+            st.metric("52 Week High", "₹"+str(high52week))
+        with scrapcol12:
+            st.metric("52 Week Low", "₹"+str(low52week))
+        with scrapcol13:
+            st.metric("3 Month High", "₹"+str(high3month))
+        with scrapcol14:
+            st.metric("3 Month Low", "₹"+str(low3month))
+        st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ### About, Pros, Cons
@@ -397,7 +527,7 @@ def proscons(content, industry):
                 for i in range(len(cons)):
                     cons_sentence += str(i+1)+". "+cons[i]+"<br>"
     
-        with st.expander("Details"):
+        with st.expander("Details", expanded=True):
             containercol1, containercol2, containercol3 = st.columns([1,1,1])
             with containercol1:
                 about_container = st.container(border=True)
@@ -438,13 +568,17 @@ def profitloss(content, industry):
             df_quarterly_results = df_quarterly_results.rename(columns={'':'Type'})
             df_quarterly_results['Type'] = df_quarterly_results['Type'].str.rstrip('\xa0+')
             df_quarterly_results = df_quarterly_results.drop(columns=[df_quarterly_results.columns.tolist()[1]])
-            df_quarterly_results = df_quarterly_results[(df_quarterly_results['Type']=="Operating Profit")|
-                                                        (df_quarterly_results['Type']=="Profit before tax")|
+            df_quarterly_results = df_quarterly_results[(df_quarterly_results['Type']=="Sales")|(df_quarterly_results['Type']=="Revenue")|
+                                                        (df_quarterly_results['Type']=="Expenses")|(df_quarterly_results['Type']=="Operating Profit")|
+                                                        (df_quarterly_results['Type']=="OPM %")|(df_quarterly_results['Type']=="Financing Profit")|
+                                                        (df_quarterly_results['Type']=="Financing Margin %")|
+                                                        (df_quarterly_results['Type']=="Other Income")|(df_quarterly_results['Type']=="Depreciation")|
+                                                        (df_quarterly_results['Type']=="Tax %")|(df_quarterly_results['Type']=="Profit before tax")|
                                                         (df_quarterly_results['Type']=="Net Profit")].reset_index(drop=True)
             df_quarterly_results_cols = df_quarterly_results.columns.tolist()
             df_quarterly_results_cols.remove('Type')
             for col in df_quarterly_results_cols:
-                df_quarterly_results[col] = pd.to_numeric(df_quarterly_results[col].str.replace(',', ''), errors='coerce')
+                df_quarterly_results[col] = pd.to_numeric(df_quarterly_results[col].str.replace(r'[,|%]', '', regex=True), errors='coerce')
             
         
         profit_loss_content = content.find('h2', string="Profit & Loss")
@@ -467,12 +601,17 @@ def profitloss(content, industry):
             else:
                 df_ttm_results = df_yearly_results[['Type',df_yearly_results.columns.tolist()[-1]]]
                 df_ttm_results = df_ttm_results.rename(columns={df_yearly_results.columns.tolist()[-1]:'TTM'})
-            df_yearly_results = df_yearly_results[(df_yearly_results['Type']=="Operating Profit")|(df_yearly_results['Type']=="Profit before tax")|
+            df_yearly_results = df_yearly_results[(df_yearly_results['Type']=="Sales")|(df_yearly_results['Type']=="Revenue")|
+                                                  (df_yearly_results['Type']=="Expenses")|(df_yearly_results['Type']=="Operating Profit")|
+                                                  (df_yearly_results['Type']=="OPM %")|(df_yearly_results['Type']=="Financing Profit")|
+                                                  (df_yearly_results['Type']=="Financing Margin %")|(df_yearly_results['Type']=="Other Income")|
+                                                  (df_yearly_results['Type']=="Depreciation")|(df_yearly_results['Type']=="Tax %")|
+                                                  (df_yearly_results['Type']=="Profit before tax")|
                                                   (df_yearly_results['Type']=="Net Profit")].reset_index(drop=True)
             df_yearly_results_cols = df_yearly_results.columns.tolist()
             df_yearly_results_cols.remove('Type')
             for col in df_yearly_results_cols:
-                df_yearly_results[col] = pd.to_numeric(df_yearly_results[col].str.replace(',', ''), errors='coerce')
+                df_yearly_results[col] = pd.to_numeric(df_yearly_results[col].str.replace(r'[,|%]', '', regex=True), errors='coerce')
         
     
             df_ttm_results = df_ttm_results[(df_ttm_results['Type']!="Operating Profit")&(df_ttm_results['Type']!="OPM %")&
@@ -489,8 +628,8 @@ def profitloss(content, industry):
             df_ttm_results = df_ttm_results.set_index("Type").loc[desired_order].reset_index()
     
     
-        with st.expander("Profit & Loss"):
-            resultoptioncol, tenureoptioncol, extracol1 = st.columns([1,0.5,1])
+        with st.expander("Profit & Loss", expanded=True):
+            resultoptioncol, tenureoptioncol, extracol1 = st.columns([1.1,0.4,1])
             with tenureoptioncol:
                 prtenure = st.radio("Tenure", ["Quarterly","Yearly"], index=0, horizontal=True, key="profit_tenure")
             if prtenure=="Quarterly":
@@ -502,7 +641,7 @@ def profitloss(content, industry):
             dfrequiredcolors = color_palette[:len(dfrequiredcols)]
             with resultoptioncol:
                 resultoptions = dfrequired['Type'].values.tolist()
-                resultoption = st.radio("Profit", resultoptions, index=0, horizontal=True)
+                resultoption = st.radio("", resultoptions, index=0, horizontal=True)
             
             barchartcol, waterfallcol = st.columns([1.5,1])
             with barchartcol:
@@ -511,12 +650,23 @@ def profitloss(content, industry):
                 intvalues = [item for item in values if not isinstance(item, str)]
                 ymin = min(list(intvalues))*1.35 if min(list(intvalues))<0 else 0
                 ymax = max(list(intvalues))*1.35 if max(list(intvalues))>0 else 0
+                if (resultoption=="OPM %") or (resultoption=="Financing Margin %") or (resultoption=="Tax %"):
+                    yaxistitle = "Percentage (%)"
+                else:
+                    yaxistitle = "₹ in Cr."
                 
+                percent_variation = [0]
+                for i in range(1, len(values)):
+                    variation = (((values[i]-values[i-1])/values[i-1])*100).round(1)
+                    percent_variation.append(variation)
                 fig_pcbar = go.Figure(data=[go.Bar(x=dfrequiredcols, y=values, name=resultoption, text=values, textposition="outside",
                                                    textfont=dict(size=14), marker=dict(color="#74a5f2"))])
-                fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title="₹ in Cr.",
+                fig_pcbar.add_trace(go.Scatter(x=dfrequiredcols, y=percent_variation, text=percent_variation, name="% Variation", mode="lines+markers",
+                                               marker=dict(color="#d94a8c", size=6), line=dict(width=2, dash="dash"), yaxis="y2"))
+                fig_pcbar.update_layout(title=dict(text="Profit Comparison", x=0.5, xanchor="center", font=dict(size=18)), yaxis_title=yaxistitle,
                                         xaxis=dict(categoryorder="array", tickfont=dict(size=9.5), tickangle=0, categoryarray=dfrequiredcols),
-                                        yaxis=dict(range=[ymin,ymax]), height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
+                                        yaxis=dict(range=[ymin,ymax], showgrid=True), yaxis2=dict(overlaying="y", showticklabels=False, showgrid=False),
+                                        height=320, width=750, margin=dict(t=40,b=10,l=15,r=10))
                 st.plotly_chart(fig_pcbar, use_container_width=True)
     
             with waterfallcol:
@@ -564,7 +714,7 @@ def balancesheet(content, industry):
             liab_df = assetliab_df[:5].copy().reset_index(drop=True)
             asset_df = assetliab_df[5:].copy().reset_index(drop=True)
     
-        with st.expander("Balance Sheet"):
+        with st.expander("Balance Sheet", expanded=True):
             assetcolumn, liabilitycolumn = st.columns([1,1])
             with assetcolumn:
                 asset_df_long = asset_df[:-1].melt(id_vars="Type", var_name="Year", value_name="Value")
@@ -632,7 +782,7 @@ def shareholding(content, industry):
             df_yearly[col] = df_yearly[col].str.rstrip('%').astype('float')
     
             
-        with st.expander("Share Holders"):
+        with st.expander("Share Holders", expanded=True):
             shareholdingcol1, shareholdingcol2 = st.columns([1,2])
             shareholders = df_quarterly['Type'].values.tolist()
             with shareholdingcol1:
@@ -673,7 +823,7 @@ def shareholding(content, industry):
 
 def dividends(industry, stock_symbol, stock_name):
     if industry!="Index":
-        with st.expander("Dividends"):
+        with st.expander("Dividends", expanded=True):
             dividcol1, dividcol2 = st.columns([8,1])
             tickerdata = yf.Ticker(stock_symbol)
             dividdf = pd.DataFrame(tickerdata.dividends).reset_index()
@@ -702,7 +852,7 @@ def dividends(industry, stock_symbol, stock_name):
 
 def deliveryqty(industry, stock_symbol, stock_name):
     if industry!="Index":
-        with st.expander("Delivery Quantity"):
+        with st.expander("Delivery Quantity", expanded=True):
             placeholder = st.empty()
             loading_gif_url = "https://i.gifer.com/74pZ.gif"
             with placeholder.container():
@@ -731,7 +881,7 @@ def deliveryqty(industry, stock_symbol, stock_name):
             st.plotly_chart(figdeliv, use_container_width=True)
 
 
-# # Stock Analysis function call
+# ## Stock Analysis function call
 
 # In[ ]:
 
@@ -786,7 +936,7 @@ def stock_analysis():
 
     stock_name, stock_symbol, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month = prologue(companies)
     content = getcontents(stockurls, stock_name)
-    basicinfo(content, alltimehigh, alltimelow, high52week, low52week, high3month, low3month)
+    basicinfo(content, industry, alltimehigh, alltimelow, high52week, low52week, high3month, low3month)
     proscons(content, industry)
     profitloss(content, industry)
     balancesheet(content, industry)
@@ -822,9 +972,9 @@ def sector_extract(sector_url):
             continue
         soup = bs(response.content, "html.parser")
         table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+        table = soup.select_one("table.data-table")
         if not table:
             continue
-        st.write(table)
         rows = table.find_all("tr")[1:]
         for row in rows:
             cells = row.find_all("td")
@@ -874,6 +1024,7 @@ def industry_extract(sector_url, url_range):
                 continue
             soup = bs(response.content, "html.parser")
             table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+            table = soup.select_one("table.data-table")
             if not table:
                 continue
             rows = table.find_all("tr")[1:]
@@ -1063,7 +1214,104 @@ def index_performance():
                    'Metal':f'{web2}00000057/', 'Pharmaceutical':f'{web2}00000046/', 'Realty':f'{web2}00000051/'}
     industry_urls = {'Automobile':(5,9), 'Banking':(11,12), 'Energy':(76,76), 'FMCG':(53,54), 'IT':(26,30), 'Infrastructure':(45,45), 'Media':(47,47),
                      'Mining & Mineral':(59,59), 'Metal':(84,86), 'Pharmaceutical':(70,73), 'Realty':(31,31)}
-    # market_share(secotr_urls, industry_urls)
+    market_share(secotr_urls, industry_urls)
+
+
+# # Strategy Indices
+
+# In[ ]:
+
+
+def nifty_strategy_indices():
+    indices = {"Sectoral Index": {"Nifty 50":"^NSEI", "Sensex":"^BSESN", "Nifty Auto":"^CNXAUTO", "Nifty Bank":"^NSEBANK",
+                                  "Nifty Commodities":"^CNXCMDT", "Nifty Energy":"^CNXENERGY", "Nifty FMCG":"^CNXFMCG", "Nifty IT":"^CNXIT",
+                                  "Nifty Infrastructure":"^CNXINFRA", "Nifty Media":"^CNXMEDIA", "Nifty Metal":"^CNXMETAL","Nifty Realty":"^CNXREALTY"},
+               "Strategy Index": {"Nifty Growth Sectors 15":"NI15.NS", "Nifty Alpha 50":"NFTALPHA50.NS", "Nifty 100 Quality 30":"NIFTYQLY30.NS",
+                                  "Nifty 100 Low Volatality 30":"NFT100LV30.NS", "Nifty 200 Momentum 30":"NI200MOM30.NS",
+                                  "Nifty Midcap 150 Quality 50":"NFMIDQLT50.NS", "Nifty 50 Value 20":"NV5020.NS",
+                                  "Nifty Alpha Low Volatality 30":"ALPHALOWVO.NS"}}
+    web = 'https://www.screener.in/company/'
+    indexurls = {'Nifty 50':f'{web}NIFTY/', 'Sensex':f'{web}1001/', 'Nifty Auto':f'{web}CNXAUTO/', 'Nifty Bank':f'{web}BANKNIFTY/',
+                 'Nifty Commodities':f'{web}CNXCOMMODI/', 'Nifty Energy':f'{web}CNXENERY/', 'Nifty FMCG':f'{web}CNXFMCG/',
+                 'Nifty IT':f'{web}CNXIT/', 'Nifty Infrastructure':f'{web}CNXINFRAST/', 'Nifty Media':f'{web}CNXMEDIA/',
+                 'Nifty Metal':f'{web}CNXMETAL/', 'Nifty Pharma':f'{web}CNXPHARMA/', 'Nifty Realty':f'{web}CNXREALTY/',
+                 'Nifty Growth Sectors 15':f'{web}NI15/', 'Nifty Alpha 50':f'{web}NFTALPHA50/', 'Nifty 100 Quality 30':f'{web}/NIFTYQLTY30',
+                 'Nifty 100 Low Volatality 30':f'{web}/NFT100LV30/', 'Nifty 200 Momentum 30':f'{web}/NI200MOM30/',
+                 'Nifty Midcap 150 Quality 50':f'{web}/NFMIDQLT50/', 'Nifty 50 Value 20':f'{web}/NV5020/',
+                 'Nifty Alpha Low Volatality 30':f'{web}/ALPHALOWVO/'}
+    index_groups = list(indices.keys())
+    indcol1, indcol2, indcol3, indcol4 = st.columns([1,0.75,1.25,1])
+    with indcol2:
+        index_group = st.selectbox("Index group", index_groups, index=0)
+    index_dict = indices[index_group]
+    with indcol3:
+        index = st.selectbox("Index", list(index_dict.keys()), index=0)
+    
+    index_url = indexurls[index]
+    response = requests.get(index_url)
+    content = bs(response.content, 'html.parser')
+    pagination = content.find("div", class_="pagination")
+    if not pagination:
+        total_pages = 1
+    else:
+        page_links = pagination.find_all("a", class_="ink-900")
+        total_pages = int(page_links[-1].text.strip()) if page_links else 1
+
+    stock_name = []
+    cmp = []
+    pe = []
+    divyld = []
+    qtrsalesgr = []
+    qtrprofitgr = []
+    roce = []
+    
+    for page in range(1, total_pages+1):
+        url = f"{index_url}?page={page}"
+        response = requests.get(url)
+        if response.status_code != 200:
+            continue
+        soup = bs(response.content, "html.parser")
+        table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+        table = soup.select_one("table.data-table")
+        if not table:
+            continue
+        rows = table.find_all("tr")[1:]
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) >= 9:
+                stock_name.append(cells[1].text.strip())
+                cmp.append(float(cells[2].text.strip()))
+                pe.append(float(cells[3].text.strip()))
+                divyld.append(float(cells[5].text.strip()))
+                qtrsalesgr.append(float(cells[9].text.strip()))
+                qtrprofitgr.append(float(cells[7].text.strip()))
+                roce.append(float(cells[10].text.strip()))
+    
+    indexdf = pd.DataFrame({"Stock Name": stock_name, "Stock Price": cmp, "Stock PE": pe, "ROCE": roce, "Dividend Yield": divyld,
+                       "Quarterly Sales Growth": qtrsalesgr, "Quarterly Profit Growth": qtrprofitgr})
+    indexdfstocknames = indexdf['Stock Name'].values.tolist()
+    indexdfstocknames = ["Median" if re.match(r"Median: \d+ Co\.", i) else i for i in indexdfstocknames]
+    if "Median" in indexdfstocknames:
+        indexdfmedianindex = indexdfstocknames.index("Median")
+        indexdf = indexdf.drop(index=indexdfmedianindex).reset_index(drop=True)
+    
+    indexcol5, indexcol6, indexcol7, indexcol8 = st.columns([2,1,1,2])
+
+    with indexcol6:
+        selected_col = st.selectbox("Sort by", indexdf.columns.tolist()[2:], index=0)
+    with indexcol7:
+        sort_order = st.selectbox("Sort Order", ["High to Low", "Low to High"], index=0)
+    
+    if sort_order=="High to Low":
+        indexdfsorted = indexdf.sort_values(by=[selected_col], ascending=False).reset_index(drop=True)
+    else:
+        indexdfsorted = indexdf.sort_values(by=[selected_col], ascending=True).reset_index(drop=True)
+    
+    indexdfsorted.index = range(1, len(indexdfsorted) + 1)
+    st.dataframe(indexdfsorted.head(), use_container_width=True)
+
+    st.write("Total List of Companies in this Index:")
+    st.write(indexdf['Stock Name'].values.tolist())
 
 
 # # FII DII Activity
@@ -1269,6 +1517,29 @@ def union_budget():
         st.plotly_chart(fig_rupgt, use_container_width=True)
 
 
+    inflation_df = pd.read_excel("India_Inflation_rate.xlsx")
+    inflation_df['Period'] = inflation_df['Month'].str[:3] + '-' + inflation_df['Year'].astype('str')
+    inflation_df['Inflation rate'] = inflation_df['Inflation rate']*100
+    inflcol1, inflcol2, inflcol3, inflcol4 = st.columns([2,1,1,2])
+    with inflcol2:
+        infl_year = st.selectbox("Select the Year", ["All"]+inflation_df['Year'].unique().tolist(), index=0)
+    if infl_year!="All":
+        inflation_df_sub = inflation_df[inflation_df['Year']==infl_year].copy().reset_index(drop=True)
+    else:
+        inflation_df_sub = inflation_df.copy()
+    avginfl = str(inflation_df_sub['Inflation rate'].mean().round(2))+"%"
+    with inflcol3:
+        st.markdown("""<p style="text-align: center; font-size: 25px; font-weight: bold;">{avginfl}</p>""".format(avginfl=avginfl),
+                    unsafe_allow_html=True)
+    fig_infl = go.Figure()
+    fig_infl.add_trace(go.Scatter(x=inflation_df_sub['Period'], y=inflation_df_sub['Inflation rate'], mode='lines', name='Inflation rate (%)',
+                                  line=dict(color='#f5af47')))
+    fig_infl.update_layout(title=dict(text='Inflation rate in India', x=0.5, xanchor='center', font=dict(size=24)), xaxis_title="Period",
+                           yaxis_title="Inflation rate (%)", template="plotly_white", xaxis=dict(tickformat="%Y-%b", tickangle=-90, showgrid=True),
+                           yaxis=dict(showgrid=True), width=1350, height=500)
+    st.plotly_chart(fig_infl, use_container_width=True)
+
+
 # # Main Function
 
 # In[ ]:
@@ -1285,81 +1556,14 @@ def main_dashboard():
     elif st.session_state.page == "Index Performance":
         index_performance()
 
+    elif st.session_state.page == "Strategy Indices":
+        nifty_strategy_indices()
+
     elif st.session_state.page == "FII DII Activity":
         fii_dii_activity()
 
     elif st.session_state.page == "Union Budget":
         union_budget()
-
-
-# ## Login Page
-
-# In[ ]:
-
-
-def load_valid_emails():
-    try:
-        df = pd.read_excel("AccessList.xlsx")
-        return set(df['MailID'].str.strip().str.lower())
-    except Exception as e:
-        st.error(f"Error loading email list: {e}")
-        return set()
-
-
-# In[ ]:
-
-
-def mail(recipient_email, otpnum):
-    msg = MIMEMultipart()
-    msg['From'] = "stockanalysiswithesh@gmail.com"
-    msg['To'] = recipient_email
-    msg['Subject'] = "OTP for Logging into Stock Analysis dashboard"
-
-    msg.attach(MIMEText(f'OTP: {otpnum}', 'plain'))
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login("stockanalysiswithesh@gmail.com", "zseo rzfw zgwr aduv")
-            text = msg.as_string()
-            server.sendmail("stockanalysiswithesh@gmail.com", recipient_email, text)
-    except Exception as e:
-        st.write(f"Error: {e}")
-
-
-# In[ ]:
-
-
-def login_page(valid_emails):
-    st.markdown("""<style>.title {text-align:center; font-size:34px; font-weight:bold;}</style><div class="title">Stock Analysis dashboard<br></div>""",
-                unsafe_allow_html=True)
-    logincol1, logincol2, logincol3 = st.columns([1,1,1])
-    logincol10, logincol11, logincol12 = st.columns([1.15,0.35,1])
-    logincol4, logincol5, logincol6 = st.columns([1,1,1])
-    logincol7, logincol8, logincol9 = st.columns([1.2,0.3,1])
-    with logincol2:
-        email = st.text_input("Email ID", placeholder="Enter your email")
-    with logincol11:
-        if st.button("Generate OTP"):
-            if email.strip().lower() in valid_emails:
-                otp = np.random.randint(100000, 1000000)
-                st.session_state.generated_otp = otp
-                st.session_state.email = email
-                mail(email, otp)
-            else:
-                st.error("You don't have access to the dashboard. Please contact Admin.")
-
-    if "generated_otp" in st.session_state:
-        with logincol5:
-            otpentry = st.text_input("OTP", placeholder="Enter the OTP received in mail")
-        with logincol8:
-            if st.button("Login"):
-                if otpentry == str(st.session_state.generated_otp):
-                    st.success("Login successful!")
-                    time.sleep(3)
-                    st.session_state.page = "Stock Analysis"
-                    st.experimental_rerun()
-                else:
-                    st.error("Invalid OTP!...")
 
 
 # In[ ]:
@@ -1368,17 +1572,11 @@ def login_page(valid_emails):
 def main():
     valid_emails = load_valid_emails()
     if "page" not in st.session_state:
-        st.session_state.page = "Login"
+        st.session_state.page = "Union Budget"
     
     if st.session_state.page == "Login":
         login_page(valid_emails)
-    elif st.session_state.page == "Stock Analysis":
-        main_dashboard()
-    elif st.session_state.page == "Index Performance":
-        main_dashboard()
-    elif st.session_state.page == "FII DII Activity":
-        main_dashboard()
-    elif st.session_state.page == "Union Budget":
+    else:
         main_dashboard()
 
 
@@ -1402,6 +1600,53 @@ if __name__ == "__main__":
 
 
 # # Testing Codes
+
+# In[ ]:
+
+
+# from selenium import webdriver
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.common.keys import Keys
+# import pandas as pd
+# from bs4 import BeautifulSoup
+# import time
+
+
+# In[ ]:
+
+
+# start = time.time()
+# options = webdriver.ChromeOptions()
+# options.add_argument("--headless")
+# driver = webdriver.Chrome(options=options)
+
+# driver.get("https://www.screener.in/login/")
+
+# email_input = driver.find_element(By.NAME, "username")
+# password_input = driver.find_element(By.NAME, "password")
+
+# email_input.send_keys("stockanalysiswithesh@gmail.com")
+# password_input.send_keys("eswaraprasath@22M")
+# password_input.send_keys(Keys.RETURN)
+
+# time.sleep(3)
+
+# driver.get("https://www.screener.in/company/NI15/")
+# time.sleep(3)  # Wait for data to load
+
+# # Extract page source
+# soup = BeautifulSoup(driver.page_source, "html.parser")
+
+# # Find table
+# table = soup.find("table", class_="data-table text-nowrap striped mark-visited")
+# table = soup.select_one("table.data-table")
+# # Convert to DataFrame
+# df = pd.read_html(str(table))[0]
+
+# # Close the browser
+# driver.quit()
+# end = time.time()
+
 
 # In[ ]:
 
