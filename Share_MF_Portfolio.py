@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[1]:
+# In[2]:
 
 
 import io
@@ -66,7 +66,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # # Functions
 
-# In[26]:
+# In[4]:
 
 
 def calculate_holdings(group):
@@ -84,7 +84,7 @@ def calculate_holdings(group):
     return pd.Series({"Total Units": remaining_units, "Total Investment": total_investment})
 
 
-# In[25]:
+# In[5]:
 
 
 def fetch_current_price(symbol):
@@ -96,7 +96,7 @@ def fetch_current_price(symbol):
         return None
 
 
-# In[24]:
+# In[6]:
 
 
 def fetch_historical_prices_batch(symbol, dates):
@@ -116,7 +116,7 @@ def fetch_historical_prices_batch(symbol, dates):
         return {}
 
 
-# In[9]:
+# In[7]:
 
 
 def webscrap(webcontent, label):
@@ -230,8 +230,10 @@ if st.session_state.page == "Stock Portfolio":
     stockdf_sub = stockdffull[stockdffull['Stock Name']==selected_stock].reset_index(drop=True)
     invested_amount = stockdf_sub[stockdf_sub['Action']=="Buy"]['Total Amount'].sum() + stockdf_sub[stockdf_sub['Action']=="Sell"]['Total Amount'].sum()
     current_value = stockdf_sub['Net Value'].iloc[-1]
+    avg_stock_price = stockdf_sub[stockdf_sub['Action']=="Buy"]['Total Amount'].sum()/stockdf_sub[stockdf_sub['Action']=="Buy"]['Units'].sum()
     invested_amount_str = "₹"+str(np.round(invested_amount,2))
     current_value_str = "₹"+str(np.round(current_value,2))
+    avg_stock_price_str = "₹"+str(np.round(avg_stock_price,2))
     bought_units = stockdf_sub[stockdf_sub['Action']=="Buy"]['Units'].sum()
     sold_units = -1*stockdf_sub[stockdf_sub['Action']=="Sell"]['Units'].sum()
     holding_units = stockdf_sub['Units'].sum()
@@ -241,6 +243,7 @@ if st.session_state.page == "Stock Portfolio":
     with colperfm4:
         st.metric("Invested Amount:", invested_amount_str)
         st.metric("Current Value:", current_value_str)
+        st.metric("Avg. Stock Price:", avg_stock_price_str)
     with colperfm5:
         fig_stprfm = go.Figure()
         fig_stprfm.add_trace(go.Scatter(x=stockdf_sub['Date'], y=stockdf_sub['Closing Price'], mode='lines', name=selected_stock,
