@@ -253,7 +253,7 @@ def prologue(companies):
     low3month = np.round(stock_data[stock_data['Date']>(datetime.today()-timedelta(weeks=12))]['Low_'+stock_symbol].min(),2)
     
     default_start_date = (stock_data['Date'].max()).to_pydatetime()-timedelta(days=1)
-    
+    st.write(default_start_date)
     col5, col6, col7 = st.columns([2.25,1.5,1])
     
     date_ranges = ["1D", "1W", "1M", "1Y", "3Y", "5Y", "Max", "Custom"]
@@ -279,7 +279,6 @@ def prologue(companies):
         if date_range == "Custom":
             start_date = datetime.combine(st.date_input("Start Date", pd.to_datetime("2024-01-01")), datetime.min.time())
         else:
-            st.write(default_start_date)
             st.text_input("Start Date", start_date.strftime("%d-%b-%Y"), disabled=True)
     
     with col4:
