@@ -235,7 +235,7 @@ def prologue(companies):
     with col2:
         stock_symbol = companies[industry][stock_name]
         st.text_input("Stock Symbol:", stock_symbol, disabled=True)
-    
+    st.write(stock_symbol)
     stock_data = yf.download(stock_symbol)
     stock_data
     if isinstance(stock_data.columns, pd.MultiIndex):
