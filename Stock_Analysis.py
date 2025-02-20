@@ -279,7 +279,7 @@ def prologue(companies):
         if date_range == "Custom":
             start_date = datetime.combine(st.date_input("Start Date", pd.to_datetime("2024-01-01")), datetime.min.time())
         else:
-            st.write(start_date)
+            st.write(default_start_date)
             st.text_input("Start Date", start_date.strftime("%d-%b-%Y"), disabled=True)
     
     with col4:
