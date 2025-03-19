@@ -1572,7 +1572,7 @@ def main_dashboard():
 def main():
     valid_emails = load_valid_emails()
     if "page" not in st.session_state:
-        st.session_state.page = "Stock Analysis"
+        st.session_state.page = "Union Budget"
     
     if st.session_state.page == "Login":
         login_page(valid_emails)
