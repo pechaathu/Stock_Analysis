@@ -3,7 +3,7 @@
 
 # # Importing Libraries
 
-# In[2]:
+# In[1]:
 
 
 import io
@@ -35,7 +35,7 @@ color_palette = px.colors.qualitative.Plotly
 st.set_page_config(layout='wide')
 
 
-# In[ ]:
+# In[3]:
 
 
 if "page" not in st.session_state:
@@ -116,7 +116,7 @@ def fetch_historical_prices_batch(symbol, dates):
         return {}
 
 
-# In[7]:
+# In[8]:
 
 
 def webscrap(webcontent, label):
@@ -206,7 +206,7 @@ if st.session_state.page == "Stock Portfolio":
 
     coltree, colline = st.columns([1, 1.25])
     with coltree:
-        fig_tree = px.treemap(df, path=["Sector"], values="Total Amount", color="Sector", color_discrete_sequence=px.colors.qualitative.Set1)
+        fig_tree = px.treemap(holdings, path=["Sector"], values="Total Amount", color="Sector", color_discrete_sequence=px.colors.qualitative.Set1)
         fig_tree.update_traces(textinfo="label+value+percent entry", textfont_size=14)
         fig_tree.update_layout(title=dict(text="Stock Diversification", x=0.5, xanchor='center', font=dict(size=22)), template="plotly_white",
                                width=550, height=500)
